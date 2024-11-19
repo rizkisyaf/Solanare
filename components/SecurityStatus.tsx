@@ -1,4 +1,5 @@
 import { motion } from "framer-motion"
+import Image from 'next/image'
 
 interface SecurityStatusProps {
   isScanning: boolean
@@ -46,10 +47,11 @@ export function SecurityStatus({ isScanning, securityCheck }: SecurityStatusProp
         
         <div className="mt-3 pt-3 border-t border-purple-500/20">
           <div className="flex items-center gap-2">
-            <img 
+            <Image 
               src="/scamsniffers-logo.svg" 
-              alt="ScamSniffers" 
-              className="h-4" 
+              alt="Security Status"
+              width={24}
+              height={24}
             />
             <span className="text-xs text-purple-300/70">
               Protected by ScamSniffers

@@ -1,14 +1,8 @@
-type LogLevel = 'info' | 'warn' | 'error'
-type LogData = Record<string, unknown>
-
 export const logger = {
-  info: (message: string, data?: LogData) => {
-    console.log(`[INFO] ${message}`, data)
+  info: (message: string, data?: any) => {
+    console.log(message, data)
   },
-  warn: (message: string, data?: LogData) => {
-    console.warn(`[WARN] ${message}`, data)
-  },
-  error: (message: string, error?: Error | unknown) => {
-    console.error(`[ERROR] ${message}`, error)
+  error: (message: string, data?: any) => {
+    console.error(message, data)
   }
 } 

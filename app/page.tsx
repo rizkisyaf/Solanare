@@ -196,7 +196,7 @@ export default function Component() {
 
     let closedCount = 0
     let totalRentReclaimed = 0
-    let failedAccounts: string[] = []
+    const failedAccounts: string[] = []
 
     for (const account of accounts) {
       logger.info('Attempting to close account', {
