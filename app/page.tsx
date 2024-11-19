@@ -337,7 +337,7 @@ export default function Component() {
                   height={32}
                   className="rounded-full"
                 />
-                <div className="text-xl font-bold text-purple-400">Voidora</div>
+                <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
               </div>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -587,7 +587,7 @@ export default function Component() {
         {/* Add footer */}
         <footer className="py-6 border-t border-purple-500/20">
           <div className="container mx-auto px-4 text-center text-purple-300/50 text-sm">
-            <p>© 2024 Voidora. All rights reserved.</p>
+            <p>© 2024 Solanare. All rights reserved.</p>
             <p className="mt-2">Built with ❤️ for the Solana community</p>
           </div>
         </footer>

@@ -11,36 +11,36 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Voidora - Solana Token Account Manager",
+  title: "Solanare - Solana Token Account Manager",
   description: "Clean up unused Solana token accounts and reclaim SOL",
   keywords: ["Solana", "Blockchain", "Crypto", "Token", "Web3"],
-  metadataBase: new URL('https://voidora.vercel.app'),
+  metadataBase: new URL('https://solanare.claims'),
   openGraph: {
-    title: "Voidora - Solana Token Account Manager",
+    title: "Solanare - Solana Token Account Manager",
     description: "Clean up unused Solana token accounts and reclaim SOL",
-    url: 'https://voidora.vercel.app',
-    siteName: 'Voidora',
+    url: 'https://solanare.claims',
+    siteName: 'Solanare',
     locale: 'en_US',
     type: 'website',
     images: [{
-      url: 'https://voidora.vercel.app/og-logo.png',
+      url: 'https://solanare.claims/og-logo.png',
       width: 1200,
       height: 630,
-      alt: 'Voidora - Solana Token Account Manager',
+      alt: 'Solanare - Solana Token Account Manager',
       type: 'image/png',
     }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Voidora - Solana Token Account Manager",
+    title: "Solanare - Solana Token Account Manager",
     description: "Clean up unused Solana token accounts and reclaim SOL",
     site: '@kisra_fistya',
     creator: '@kisra_fistya',
     images: [{
-      url: 'https://voidora.vercel.app/og-logo.png',
+      url: 'https://solanare.claims/og-logo.png',
       width: 1200,
       height: 630,
-      alt: 'Voidora - Solana Token Account Manager'
+      alt: 'Solanare - Solana Token Account Manager'
     }],
   }
 };
