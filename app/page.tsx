@@ -4,16 +4,14 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
-import { PublicKey, Transaction } from "@solana/web3.js"
+import { PublicKey } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { closeTokenAccount } from "./utils/transactions"
 import { logger } from "./utils/logger"
-
-require('@solana/wallet-adapter-react-ui/styles.css')
-
+import '@solana/wallet-adapter-react-ui/styles.css'
 interface TokenAccount {
   pubkey: PublicKey
   mint: string
