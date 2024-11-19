@@ -5,17 +5,20 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 import { PublicKey } from "@solana/web3.js"
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { closeTokenAccount } from "./utils/transactions"
 import { logger } from "./utils/logger"
 import '@solana/wallet-adapter-react-ui/styles.css'
+import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token"
+
 interface TokenAccount {
   pubkey: PublicKey
   mint: string
   balance: number
+  isAssociated: boolean
 }
 
 export default function Component() {
@@ -90,28 +93,60 @@ export default function Component() {
     setLoading(true)
     try {
       logger.info('Starting account scan', { publicKey: publicKey.toString() })
-      
-      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
-      const zeroBalanceAccounts = accounts.value
-        .filter(account => {
-          const parsedInfo = account.account.data.parsed.info
-          return parsedInfo.tokenAmount.uiAmount === 0
-        })
-        .map(account => ({
-          pubkey: account.pubkey,
-          mint: account.account.data.parsed.info.mint,
-          balance: account.account.data.parsed.info.tokenAmount.uiAmount
-        }))
 
-      logger.info('Scan complete', { 
+      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
+
+      // Process accounts and check if they're ATAs
+      const zeroBalanceAccounts = await Promise.all(
+        accounts.value
+          .filter(account => {
+            const parsedInfo = account.account.data.parsed.info
+            return parsedInfo.tokenAmount.uiAmount === 0
+          })
+          .map(async account => {
+            const parsedInfo = account.account.data.parsed.info
+            const mint = new PublicKey(parsedInfo.mint)
+
+            // Check if account is an ATA
+            const ata = await getAssociatedTokenAddress(
+              mint,
+              publicKey,
+              false,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+
+            return {
+              pubkey: account.pubkey,
+              mint: parsedInfo.mint,
+              balance: parsedInfo.tokenAmount.uiAmount,
+              isAssociated: account.pubkey.equals(ata)
+            }
+          })
+      )
+
+      const [associatedAccounts, unknownAccounts] = zeroBalanceAccounts.reduce(
+        ([associated, unknown], account) => {
+          if (account.isAssociated) {
+            associated.push(account)
+          } else {
+            unknown.push(account)
+          }
+          return [associated, unknown]
+        },
+        [[] as TokenAccount[], [] as TokenAccount[]]
+      )
+
+      logger.info('Scan complete', {
         totalAccounts: accounts.value.length,
-        zeroBalanceAccounts: zeroBalanceAccounts.length 
+        associatedAccounts: associatedAccounts.length,
+        unknownAccounts: unknownAccounts.length
       })
 
-      setAccounts(zeroBalanceAccounts)
+      setAccounts([...unknownAccounts, ...associatedAccounts]) // Unknown first
       toast({
         title: "Scan Complete",
-        description: `Found ${zeroBalanceAccounts.length} unused token accounts`,
+        description: `Found ${unknownAccounts.length} unknown and ${associatedAccounts.length} associated token accounts`,
       })
     } catch (error) {
       logger.error("Error scanning accounts:", error)
@@ -128,9 +163,9 @@ export default function Component() {
     if (!publicKey || accounts.length === 0) return
 
     setClosing(true)
-    logger.info('Starting account closure', { 
+    logger.info('Starting account closure', {
       accountCount: accounts.length,
-      publicKey: publicKey.toString() 
+      publicKey: publicKey.toString()
     })
 
     let closedCount = 0
@@ -138,8 +173,8 @@ export default function Component() {
     const RENT_EXEMPTION = 0.00203928
 
     for (const account of accounts) {
-      logger.info('Attempting to close account', { 
-        account: account.pubkey.toString() 
+      logger.info('Attempting to close account', {
+        account: account.pubkey.toString()
       })
 
       const result = await closeTokenAccount(
@@ -152,14 +187,14 @@ export default function Component() {
       if (result.signature && !result.error) {
         closedCount++
         totalRentReclaimed += RENT_EXEMPTION
-        logger.info('Account closed successfully', { 
+        logger.info('Account closed successfully', {
           signature: result.signature,
           account: account.pubkey.toString()
         })
       } else {
-        logger.error('Failed to close account', { 
+        logger.error('Failed to close account', {
           account: account.pubkey.toString(),
-          error: result.error 
+          error: result.error
         })
         toast({
           title: "Error closing account",
@@ -179,9 +214,9 @@ export default function Component() {
 
     setClosing(false)
 
-    logger.info('Account closure complete', { 
+    logger.info('Account closure complete', {
       closedCount,
-      totalRentReclaimed 
+      totalRentReclaimed
     })
 
     if (closedCount > 0) {
@@ -297,11 +332,20 @@ export default function Component() {
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
                     >
                       {accounts.map((account) => (
-                        <Card key={account.pubkey.toString()} className="bg-purple-900/30 border-purple-500/30">
+                        <Card
+                          key={account.pubkey.toString()}
+                          className={`${account.isAssociated
+                            ? 'bg-purple-900/30 border-purple-500/30'
+                            : 'bg-red-900/30 border-red-500/30'
+                            }`}
+                        >
                           <CardContent className="p-4">
                             <p className="text-purple-300 truncate">{account.pubkey.toString()}</p>
                             <p className="text-purple-400">Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}</p>
                             <p className="text-purple-400">Balance: {account.balance}</p>
+                            <p className={`${account.isAssociated ? 'text-purple-400' : 'text-red-400'}`}>
+                              {account.isAssociated ? 'Associated Account' : 'Unknown Account'}
+                            </p>
                           </CardContent>
                         </Card>
                       ))}
