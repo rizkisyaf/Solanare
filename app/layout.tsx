@@ -14,16 +14,33 @@ export const metadata: Metadata = {
   title: "Voidora - Solana Token Account Manager",
   description: "Clean up unused Solana token accounts and reclaim SOL",
   keywords: ["Solana", "Blockchain", "Crypto", "Token", "Web3"],
+  metadataBase: new URL('https://voidora.vercel.app'),
   openGraph: {
     title: "Voidora - Solana Token Account Manager",
     description: "Clean up unused Solana token accounts and reclaim SOL",
-    images: ['/og-image.jpg'],
+    url: 'https://voidora.vercel.app',
+    siteName: 'Voidora',
+    locale: 'en_US',
+    type: 'website',
+    images: [{
+      url: '/og-image.jpg',
+      width: 1200,
+      height: 630,
+      alt: 'Voidora - Solana Token Account Manager'
+    }],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Voidora - Solana Token Account Manager",
     description: "Clean up unused Solana token accounts and reclaim SOL",
-    images: ['/twitter-image.jpg'],
+    site: '@kisra_fistya',
+    creator: '@kisra_fistya',
+    images: [{
+      url: '/og-image.jpg',
+      width: 1200,
+      height: 630,
+      alt: 'Voidora - Solana Token Account Manager'
+    }],
   }
 };
 
