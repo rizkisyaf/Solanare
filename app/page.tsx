@@ -30,6 +30,10 @@ export default function Component() {
   const [closing, setClosing] = useState(false)
   const { toast } = useToast()
 
+  const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
+  const RENT_EXEMPTION = 0.00203928
+  const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
+
   // Star field animation
   useEffect(() => {
     const canvas = canvasRef.current
@@ -170,7 +174,6 @@ export default function Component() {
 
     let closedCount = 0
     let totalRentReclaimed = 0
-    const RENT_EXEMPTION = 0.00203928
 
     for (const account of accounts) {
       logger.info('Attempting to close account', {
@@ -186,7 +189,7 @@ export default function Component() {
 
       if (result.signature && !result.error) {
         closedCount++
-        totalRentReclaimed += RENT_EXEMPTION
+        totalRentReclaimed += RENT_AFTER_FEE
         logger.info('Account closed successfully', {
           signature: result.signature,
           account: account.pubkey.toString()
@@ -222,7 +225,7 @@ export default function Component() {
     if (closedCount > 0) {
       toast({
         title: "Accounts Closed",
-        description: `Closed ${closedCount} accounts and reclaimed approximately ${totalRentReclaimed.toFixed(8)} SOL`,
+        description: `Closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)`,
       })
     }
   }
@@ -313,6 +316,9 @@ export default function Component() {
                   >
                     {loading ? "Scanning..." : "Scan Accounts"}
                   </Button>
+                  <div className="text-sm text-purple-300/70 mb-2">
+                    A 5% platform fee applies to reclaimed SOL
+                  </div>
                   {accounts.length > 0 && (
                     <Button
                       onClick={closeAccounts}
