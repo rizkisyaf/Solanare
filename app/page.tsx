@@ -15,12 +15,13 @@ import { BlackHole } from '@/components/BlackHole'
 import { scanAllAccounts } from './utils/scanner'
 import { checkTransactionSecurity, SecurityCheck } from './utils/security'
 import { SecurityStatus } from "@/components/SecurityStatus"
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
+import Image from 'next/image'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
   PaginationPrevious
 } from "@/components/ui/pagination"
 
@@ -251,9 +252,8 @@ export default function Component() {
     if (closedCount > 0) {
       toast({
         title: "Accounts Closed",
-        description: `Successfully closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)${
-          failedAccounts.length > 0 ? `\n${failedAccounts.length} accounts failed to close.` : ''
-        }`,
+        description: `Successfully closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)${failedAccounts.length > 0 ? `\n${failedAccounts.length} accounts failed to close.` : ''
+          }`,
       })
     }
   }
@@ -281,7 +281,16 @@ export default function Component() {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
-              <div className="text-xl font-bold text-purple-400">Voidora</div>
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/voidora-logo.svg"
+                  alt="Voidora Logo"
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
+                <div className="text-xl font-bold text-purple-400">Voidora</div>
+              </div>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -450,7 +459,7 @@ export default function Component() {
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
-                          <PaginationPrevious 
+                          <PaginationPrevious
                             href="#"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             aria-disabled={currentPage === 1}
@@ -503,7 +512,7 @@ export default function Component() {
           </div>
         </footer>
       </div>
-      
+
       <SecurityStatus
         isScanning={loading}
         securityCheck={securityCheck}
