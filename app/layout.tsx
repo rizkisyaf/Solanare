@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     type: 'website',
     images: [{
-      url: '/og-image.png',
+      url: '/og-logo.png',
       width: 1200,
       height: 630,
       alt: 'Voidora - Solana Token Account Manager'
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     site: '@kisra_fistya',
     creator: '@kisra_fistya',
     images: [{
-      url: '/og-image.png',
+      url: '/og-logo.png',
       width: 1200,
       height: 630,
       alt: 'Voidora - Solana Token Account Manager'
