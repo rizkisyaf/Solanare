@@ -29,52 +29,64 @@ export async function closeTokenAccount(
   sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
 ): Promise<TransactionResult> {
   try {
-    // Calculate the fee amount (5% of RENT_EXEMPTION)
     const RENT_EXEMPTION = 0.00203928
     const feeAmount = RENT_EXEMPTION * feePercentage
     const userAmount = RENT_EXEMPTION - feeAmount
 
-    // Create two instructions: one for fee, one for user
+    const transaction = new Transaction()
+    
+    // Create instructions for fee and user
     const feeInstruction = createCloseAccountInstruction(
       tokenAccount,
-      treasuryWallet, // Fee goes to treasury
-      publicKey, // Original owner still needs to sign
+      treasuryWallet,
+      publicKey,
       []
     )
 
     const userInstruction = createCloseAccountInstruction(
       tokenAccount,
-      publicKey, // Remaining amount goes to user
+      publicKey,
       publicKey,
       []
     )
-    
-    const transaction = new Transaction()
-      .add(feeInstruction)
-      .add(userInstruction)
+
+    transaction.add(feeInstruction).add(userInstruction)
 
     const { blockhash } = await connection.getLatestBlockhash()
     transaction.recentBlockhash = blockhash
     transaction.feePayer = publicKey
-    
-    // Simulate the transaction first
-    const simulation = await connection.simulateTransaction(transaction)
-    if (simulation.value.err) {
-      throw new Error(`Transaction simulation failed: ${simulation.value.err}`)
+
+    // Improved simulation error handling
+    try {
+      const simulation = await connection.simulateTransaction(transaction)
+      
+      if (simulation.value.err) {
+        const errorLogs = simulation.value.logs?.join('\n') || 'No error logs available'
+        logger.error('Transaction simulation failed:', {
+          error: simulation.value.err,
+          logs: errorLogs
+        })
+        throw new Error(`Transaction simulation failed: ${errorLogs}`)
+      }
+    } catch (simError) {
+      throw new Error(`Simulation error: ${simError instanceof Error ? simError.message : 'Unknown simulation error'}`)
     }
-    
+
     const signature = await sendTransaction(transaction, connection)
     await confirmTransaction(connection, signature)
-    
+
     logger.info(`Token account closed successfully`, {
       signature,
       tokenAccount: tokenAccount.toString()
     })
-    
+
     return { signature }
-    
+
   } catch (error) {
-    logger.error('Error closing token account:', error)
+    logger.error('Error closing token account:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      tokenAccount: tokenAccount.toString()
+    })
     return {
       signature: '',
       error: error instanceof Error ? error.message : 'Unknown error occurred'

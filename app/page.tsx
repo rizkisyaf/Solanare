@@ -196,6 +196,7 @@ export default function Component() {
 
     let closedCount = 0
     let totalRentReclaimed = 0
+    let failedAccounts: string[] = []
 
     for (const account of accounts) {
       logger.info('Attempting to close account', {
@@ -219,23 +220,23 @@ export default function Component() {
           account: account.pubkey.toString()
         })
       } else {
+        failedAccounts.push(account.pubkey.toString())
         logger.error('Failed to close account', {
           account: account.pubkey.toString(),
           error: result.error
         })
         toast({
-          title: "Error closing account",
-          description: result.error || "Unknown error occurred",
+          title: "Failed to close account",
+          description: `Error: ${result.error}`,
           variant: "destructive",
         })
       }
     }
 
+    // Remove only successfully closed accounts
     setAccounts(prevAccounts =>
       prevAccounts.filter(account =>
-        !accounts.some(closedAccount =>
-          closedAccount.pubkey.toString() === account.pubkey.toString()
-        )
+        !failedAccounts.includes(account.pubkey.toString())
       )
     )
 
@@ -243,13 +244,16 @@ export default function Component() {
 
     logger.info('Account closure complete', {
       closedCount,
+      failedCount: failedAccounts.length,
       totalRentReclaimed
     })
 
     if (closedCount > 0) {
       toast({
         title: "Accounts Closed",
-        description: `Closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)`,
+        description: `Successfully closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)${
+          failedAccounts.length > 0 ? `\n${failedAccounts.length} accounts failed to close.` : ''
+        }`,
       })
     }
   }
