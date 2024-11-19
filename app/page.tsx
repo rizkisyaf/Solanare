@@ -21,6 +21,12 @@ interface TokenAccount {
   isAssociated: boolean
 }
 
+// Treasury wallet for collecting platform fees
+const TREASURY_WALLET = new PublicKey("8QAUgSFQxMcuYCn3yDN28HuqBsbXq2Ac1rADo5AWh8S5")
+const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
+const RENT_EXEMPTION = 0.00203928
+const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
+
 export default function Component() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { publicKey, sendTransaction } = useWallet()
@@ -29,10 +35,6 @@ export default function Component() {
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
   const { toast } = useToast()
-
-  const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
-  const RENT_EXEMPTION = 0.00203928
-  const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
 
   // Star field animation
   useEffect(() => {
@@ -184,6 +186,8 @@ export default function Component() {
         connection,
         publicKey,
         account.pubkey,
+        TREASURY_WALLET,
+        PLATFORM_FEE_PERCENTAGE,
         sendTransaction
       )
 

@@ -24,17 +24,35 @@ export async function closeTokenAccount(
   connection: Connection,
   publicKey: PublicKey,
   tokenAccount: PublicKey,
+  treasuryWallet: PublicKey,
+  feePercentage: number,
   sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
 ): Promise<TransactionResult> {
   try {
-    const instruction = createCloseAccountInstruction(
+    // Calculate the fee amount (5% of RENT_EXEMPTION)
+    const RENT_EXEMPTION = 0.00203928
+    const feeAmount = RENT_EXEMPTION * feePercentage
+    const userAmount = RENT_EXEMPTION - feeAmount
+
+    // Create two instructions: one for fee, one for user
+    const feeInstruction = createCloseAccountInstruction(
       tokenAccount,
-      publicKey,
+      treasuryWallet, // Fee goes to treasury
+      publicKey, // Original owner still needs to sign
+      []
+    )
+
+    const userInstruction = createCloseAccountInstruction(
+      tokenAccount,
+      publicKey, // Remaining amount goes to user
       publicKey,
       []
     )
     
-    const transaction = new Transaction().add(instruction)
+    const transaction = new Transaction()
+      .add(feeInstruction)
+      .add(userInstruction)
+
     const { blockhash } = await connection.getLatestBlockhash()
     transaction.recentBlockhash = blockhash
     transaction.feePayer = publicKey
