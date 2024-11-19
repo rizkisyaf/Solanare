@@ -15,6 +15,14 @@ import { BlackHole } from '@/components/BlackHole'
 import { scanAllAccounts } from './utils/scanner'
 import { checkTransactionSecurity, SecurityCheck } from './utils/security'
 import { SecurityStatus } from "@/components/SecurityStatus"
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious
+} from "@/components/ui/pagination"
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -45,6 +53,8 @@ export default function Component() {
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -244,6 +254,13 @@ export default function Component() {
     }
   }
 
+  // Calculate pagination
+  const totalPages = Math.ceil(accounts.length / itemsPerPage)
+  const currentAccounts = accounts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
       <canvas
@@ -260,7 +277,7 @@ export default function Component() {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
-              <div className="text-xl font-bold text-purple-400">Voidara</div>
+              <div className="text-xl font-bold text-purple-400">Voidora</div>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -377,9 +394,9 @@ export default function Component() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
-                      {accounts.map((account) => (
+                      {currentAccounts.map((account) => (
                         <Card
                           key={account.pubkey.toString()}
                           className={`${account.type === 'token' ? 'bg-purple-900/30 border-purple-500/30' :
@@ -422,6 +439,40 @@ export default function Component() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Add pagination */}
+                {accounts.length > itemsPerPage && (
+                  <div className="mt-8 mb-12">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            aria-disabled={currentPage === 1}
+                          />
+                        </PaginationItem>
+                        {[...Array(totalPages)].map((_, i) => (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(i + 1)}
+                              isActive={currentPage === i + 1}
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            aria-disabled={currentPage === totalPages}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </div>
             ) : (
               <motion.div
@@ -439,11 +490,20 @@ export default function Component() {
             )}
           </motion.div>
         </main>
-        <SecurityStatus
-          isScanning={loading}
-          securityCheck={securityCheck}
-        />
+
+        {/* Add footer */}
+        <footer className="py-6 border-t border-purple-500/20">
+          <div className="container mx-auto px-4 text-center text-purple-300/50 text-sm">
+            <p>© 2024 Voidora. All rights reserved.</p>
+            <p className="mt-2">Built with ❤️ for the Solana community</p>
+          </div>
+        </footer>
       </div>
+      
+      <SecurityStatus
+        isScanning={loading}
+        securityCheck={securityCheck}
+      />
     </div>
   )
 }

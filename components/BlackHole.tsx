@@ -111,11 +111,18 @@ export function BlackHole({ scanning, results, isWalletConnected }: BlackHolePro
           {results && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute inset-0 flex items-center justify-center backdrop-blur-sm"
+              animate={{
+                opacity: [0.7, 1, 0.7],
+                scale: [0.95, 1, 0.95]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 2,
+                ease: "easeInOut"
+              }}
+              className="absolute inset-0 flex items-center justify-center"
             >
-              <div className="text-center text-purple-300">
+              <div className="text-center text-purple-300 bg-black/50 p-4 rounded-full backdrop-blur-sm">
                 <div className="text-2xl font-bold">{results.totalAccounts}</div>
                 <div className="text-sm opacity-70">Accounts Found</div>
                 <div className="text-lg mt-2">{results.potentialSOL.toFixed(4)} SOL</div>

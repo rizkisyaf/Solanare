@@ -1,4 +1,4 @@
-# Voidara - Solana Token Account Manager
+# Voidora - Solana Token Account Manager
 
 Clean up unused Solana token accounts and reclaim SOL.
 
