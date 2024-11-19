@@ -24,6 +24,8 @@ import {
   PaginationNext,
   PaginationPrevious
 } from "@/components/ui/pagination"
+import { BalanceFilter } from './types/accounts'
+import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -61,6 +63,14 @@ export default function Component() {
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 15
+  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>({
+    min: 0,
+    max: 0,
+    includeNonZero: false,
+    includeFreezable: false,
+    includeMintable: false,
+    filterType: 'all'
+  })
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -280,6 +290,29 @@ export default function Component() {
     currentPage * itemsPerPage
   )
 
+  const filteredAccounts = accounts.filter(account => {
+    // Filter by balance
+    if (balanceFilter.filterType === 'zero-only' && account.balance > 0) {
+      return false
+    }
+    if (balanceFilter.filterType === 'non-zero-only' && account.balance === 0) {
+      return false
+    }
+    if (balanceFilter.filterType === 'custom' && balanceFilter.max !== null) {
+      if (account.balance > balanceFilter.max) return false
+    }
+
+    // Filter by token attributes
+    if (!balanceFilter.includeFreezable && account.hasFreezingAuthority) {
+      return false
+    }
+    if (!balanceFilter.includeMintable && account.isMintable) {
+      return false
+    }
+
+    return true
+  })
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
       <canvas
@@ -382,6 +415,12 @@ export default function Component() {
                     </Button>
                   )}
                 </div>
+
+                {/* Add BalanceFilter component here */}
+                {accounts.length > 0 && (
+                  <BalanceFilterComponent onFilterChange={setBalanceFilter} />
+                )}
+                
                 {accounts.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -424,7 +463,7 @@ export default function Component() {
                       exit={{ opacity: 0, y: -20 }}
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
-                      {currentAccounts.map((account) => (
+                      {filteredAccounts.map((account) => (
                         <Card
                           key={account.pubkey.toString()}
                           className={`${account.type === 'token' ? 'bg-purple-900/30 border-purple-500/30' :
@@ -446,7 +485,7 @@ export default function Component() {
                                 {RENT_AFTER_FEE.toFixed(8)} SOL
                               </span>
                             </div>
-                            
+
                             {(account.isMintable || account.hasFreezingAuthority || account.isFrozen || !account.isCloseable) && (
                               <div className="flex flex-wrap gap-2 mb-2">
                                 {account.isMintable && (
@@ -471,7 +510,7 @@ export default function Component() {
                                 )}
                               </div>
                             )}
-                            
+
                             <p className="text-purple-300 text-sm truncate font-mono">
                               {account.pubkey.toString()}
                             </p>

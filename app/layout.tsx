@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     site: '@kisra_fistya',
     creator: '@kisra_fistya',
     images: [{
-      url: '/og-logo.png',
+      url: 'https://voidora.vercel.app/og-logo.png',
       width: 1200,
       height: 630,
       alt: 'Voidora - Solana Token Account Manager'
