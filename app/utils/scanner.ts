@@ -1,5 +1,5 @@
 import { Connection, PublicKey, AccountInfo as SolanaAccountInfo } from "@solana/web3.js"
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token"
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 
 interface AccountInfo {
@@ -10,6 +10,12 @@ interface AccountInfo {
   type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
   programId: PublicKey
   rentExemption?: number
+  isFrozen?: boolean
+  isMintable?: boolean
+  hasFreezingAuthority?: boolean
+  estimatedCloseCost?: number
+  isCloseable: boolean
+  closeWarning?: string
 }
 
 interface ScanResults {
@@ -38,6 +44,37 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
       const parsedInfo = account.account.data.parsed.info
       const mint = new PublicKey(parsedInfo.mint)
       
+      // Get mint info to check authorities
+      const mintInfo = await getMint(connection, mint)  
+      
+      // Calculate estimated closing cost
+      const rentExemption = RENT_EXEMPTION
+      const estimatedFee = await connection.getRecentBlockhash()
+        .then(res => res.feeCalculator.lamportsPerSignature)
+      const estimatedCloseCost = estimatedFee * 2 // Approximate cost for close transaction
+      
+      // Check if account has enough SOL to pay for closing
+      const userBalance = await connection.getBalance(publicKey)
+      const canPayForClose = userBalance >= estimatedCloseCost
+
+      // Determine closeability and warning message
+      let isCloseable = true
+      let closeWarning = ''
+
+      if (parsedInfo.tokenAmount.amount > 0) {
+        isCloseable = false
+        closeWarning = 'Cannot close: Account has token balance'
+      } else if (mintInfo.freezeAuthority) {
+        isCloseable = false
+        closeWarning = 'Cannot close: Token is freezable'
+      } else if (mintInfo.mintAuthority) {
+        isCloseable = false
+        closeWarning = 'Cannot close: Token is mintable'
+      } else if (!canPayForClose) {
+        isCloseable = false
+        closeWarning = 'Cannot close: Insufficient SOL for transaction fee'
+      }
+
       const ata = await getAssociatedTokenAddress(
         mint,
         publicKey,
@@ -53,7 +90,13 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
         isAssociated: account.pubkey.equals(ata),
         type: 'token' as const,
         programId: TOKEN_PROGRAM_ID,
-        rentExemption: RENT_EXEMPTION
+        rentExemption: RENT_EXEMPTION,
+        isFrozen: parsedInfo.state === 'frozen',
+        isMintable: !!mintInfo.mintAuthority,
+        hasFreezingAuthority: !!mintInfo.freezeAuthority,
+        estimatedCloseCost,
+        isCloseable,
+        closeWarning
       }
     })
   )
@@ -75,7 +118,9 @@ async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Pro
         isAssociated: false,
         type: 'openOrder' as const,
         programId,
-        rentExemption: RENT_EXEMPTION
+        rentExemption: RENT_EXEMPTION,
+        isCloseable: true,
+        closeWarning: ''
       }))
     })
   )
@@ -97,7 +142,9 @@ async function scanUndeployedTokens(connection: Connection, publicKey: PublicKey
     isAssociated: false,
     type: 'undeployed' as const,
     programId: TOKEN_PROGRAM_ID,
-    rentExemption: RENT_EXEMPTION
+    rentExemption: RENT_EXEMPTION,
+    isCloseable: true,
+    closeWarning: ''
   }))
 }
 
@@ -116,7 +163,9 @@ async function scanUnknownAccounts(connection: Connection, publicKey: PublicKey)
         isAssociated: false,
         type: 'unknown' as const,
         programId: accountInfo.owner,
-        rentExemption: RENT_EXEMPTION
+        rentExemption: RENT_EXEMPTION,
+        isCloseable: true,
+        closeWarning: ''
       })
     }
 

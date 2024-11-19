@@ -33,6 +33,11 @@ interface TokenAccount {
   type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
   programId: PublicKey
   rentExemption?: number
+  isCloseable: boolean
+  closeWarning: string
+  isMintable: boolean
+  hasFreezingAuthority: boolean
+  isFrozen: boolean
 }
 
 // Treasury wallet for collecting platform fees
@@ -189,9 +194,19 @@ export default function Component() {
   const closeAccounts = async () => {
     if (!publicKey || accounts.length === 0) return
 
+    const closeableAccounts = accounts.filter(account => account.isCloseable)
+    if (closeableAccounts.length === 0) {
+      toast({
+        title: "No Closeable Accounts",
+        description: "None of the selected accounts can be closed at this time.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setClosing(true)
     logger.info('Starting account closure', {
-      accountCount: accounts.length,
+      accountCount: closeableAccounts.length,
       publicKey: publicKey.toString()
     })
 
@@ -199,7 +214,7 @@ export default function Component() {
     let totalRentReclaimed = 0
     const failedAccounts: string[] = []
 
-    for (const account of accounts) {
+    for (const account of closeableAccounts) {
       logger.info('Attempting to close account', {
         account: account.pubkey.toString()
       })
@@ -431,6 +446,32 @@ export default function Component() {
                                 {RENT_AFTER_FEE.toFixed(8)} SOL
                               </span>
                             </div>
+                            
+                            {(account.isMintable || account.hasFreezingAuthority || account.isFrozen || !account.isCloseable) && (
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                {account.isMintable && (
+                                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
+                                    Mintable
+                                  </span>
+                                )}
+                                {account.hasFreezingAuthority && (
+                                  <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-300">
+                                    Freezable
+                                  </span>
+                                )}
+                                {account.isFrozen && (
+                                  <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-300">
+                                    Frozen
+                                  </span>
+                                )}
+                                {!account.isCloseable && (
+                                  <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-300" title={account.closeWarning}>
+                                    Not Closeable
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
                             <p className="text-purple-300 text-sm truncate font-mono">
                               {account.pubkey.toString()}
                             </p>

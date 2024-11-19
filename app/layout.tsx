@@ -23,10 +23,11 @@ export const metadata: Metadata = {
     locale: 'en_US',
     type: 'website',
     images: [{
-      url: '/og-logo.png',
+      url: 'https://voidora.vercel.app/og-logo.png',
       width: 1200,
       height: 630,
-      alt: 'Voidora - Solana Token Account Manager'
+      alt: 'Voidora - Solana Token Account Manager',
+      type: 'image/png',
     }],
   },
   twitter: {
