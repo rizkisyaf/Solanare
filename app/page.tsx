@@ -1,24 +1,29 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 import { PublicKey } from "@solana/web3.js"
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { closeTokenAccount } from "./utils/transactions"
 import { logger } from "./utils/logger"
 import '@solana/wallet-adapter-react-ui/styles.css'
-import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { BlackHole } from '@/components/BlackHole'
+import { scanAllAccounts } from './utils/scanner'
+import { checkTransactionSecurity, SecurityCheck } from './utils/security'
+import { SecurityStatus } from "@/components/SecurityStatus"
 
 interface TokenAccount {
   pubkey: PublicKey
   mint: string
   balance: number
   isAssociated: boolean
+  type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
+  programId: PublicKey
+  rentExemption?: number
 }
 
 // Treasury wallet for collecting platform fees
@@ -27,17 +32,34 @@ const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
 const RENT_EXEMPTION = 0.00203928
 const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
 
+// Move WalletMultiButton import here
+const WalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletMultiButton),
+  { ssr: false }
+)
+
 export default function Component() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { publicKey, sendTransaction } = useWallet()
-  const { connection } = useConnection()
+  // Group all useState hooks together
+  const [mounted, setMounted] = useState(false)
   const [accounts, setAccounts] = useState<TokenAccount[]>([])
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
+
+  // Group all refs and context hooks
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { publicKey, sendTransaction } = useWallet()
+  const { connection } = useConnection()
   const { toast } = useToast()
 
-  // Star field animation
+  // Mounting effect
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Star field animation effect
+  useEffect(() => {
+    if (!mounted) return
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -91,74 +113,62 @@ export default function Component() {
       cancelAnimationFrame(animationFrameId)
       window.removeEventListener('resize', resizeCanvas)
     }
-  }, [])
+  }, [mounted])
+
+  if (!mounted) {
+    return null
+  }
 
   const scanAccounts = async () => {
     if (!publicKey) return
 
     setLoading(true)
+    setSecurityCheck(undefined)
+
     try {
       logger.info('Starting account scan', { publicKey: publicKey.toString() })
 
-      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
+      const scanResults = await scanAllAccounts(connection, publicKey)
 
-      // Process accounts and check if they're ATAs
-      const zeroBalanceAccounts = await Promise.all(
-        accounts.value
-          .filter(account => {
-            const parsedInfo = account.account.data.parsed.info
-            return parsedInfo.tokenAmount.uiAmount === 0
-          })
-          .map(async account => {
-            const parsedInfo = account.account.data.parsed.info
-            const mint = new PublicKey(parsedInfo.mint)
-
-            // Check if account is an ATA
-            const ata = await getAssociatedTokenAddress(
-              mint,
-              publicKey,
-              false,
-              TOKEN_PROGRAM_ID,
-              ASSOCIATED_TOKEN_PROGRAM_ID
-            )
-
-            return {
-              pubkey: account.pubkey,
-              mint: parsedInfo.mint,
-              balance: parsedInfo.tokenAmount.uiAmount,
-              isAssociated: account.pubkey.equals(ata)
-            }
-          })
+      const securityCheck = await checkTransactionSecurity(
+        connection,
+        publicKey,
+        { accounts: scanResults }
       )
 
-      const [associatedAccounts, unknownAccounts] = zeroBalanceAccounts.reduce(
-        ([associated, unknown], account) => {
-          if (account.isAssociated) {
-            associated.push(account)
-          } else {
-            unknown.push(account)
-          }
-          return [associated, unknown]
-        },
-        [[] as TokenAccount[], [] as TokenAccount[]]
-      )
+      setSecurityCheck(securityCheck)
 
-      logger.info('Scan complete', {
-        totalAccounts: accounts.value.length,
-        associatedAccounts: associatedAccounts.length,
-        unknownAccounts: unknownAccounts.length
-      })
+      if (securityCheck.isScam) {
+        throw new Error(`Security Risk Detected: ${securityCheck.details}`)
+      }
 
-      setAccounts([...unknownAccounts, ...associatedAccounts]) // Unknown first
+      // Convert and filter accounts to match TokenAccount interface
+      const allAccounts = [
+        ...scanResults.tokenAccounts,
+        ...scanResults.openOrders,
+        ...scanResults.undeployedTokens,
+        ...scanResults.unknownAccounts
+      ].map(account => ({
+        pubkey: account.pubkey,
+        mint: account.mint || 'unknown',  // Provide default for optional mint
+        balance: account.balance,
+        isAssociated: account.isAssociated,
+        type: account.type,
+        programId: account.programId,
+        rentExemption: account.rentExemption
+      })) as TokenAccount[]
+
+      setAccounts(allAccounts)
       toast({
         title: "Scan Complete",
-        description: `Found ${unknownAccounts.length} unknown and ${associatedAccounts.length} associated token accounts`,
+        description: `Found ${allAccounts.length} accounts with ${scanResults.potentialSOL.toFixed(8)} SOL potential reclaim`,
       })
+
     } catch (error) {
       logger.error("Error scanning accounts:", error)
       toast({
         title: "Error scanning accounts",
-        description: "Please try again later",
+        description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
       })
     }
@@ -269,36 +279,30 @@ export default function Component() {
             transition={{ duration: 0.8 }}
           >
             {/* Black Hole Animation */}
-            <div className="relative w-64 h-64 mx-auto mb-16">
+            <BlackHole
+              scanning={loading}
+              results={accounts.length > 0 ? {
+                totalAccounts: accounts.length,
+                potentialSOL: accounts.length * RENT_AFTER_FEE,
+                riskLevel: accounts.some(a => !a.isAssociated) ? 'medium' : 'low'
+              } : null}
+              isWalletConnected={!!publicKey}
+            />
+
+            {/* Scam Protection Message */}
+            {publicKey && (
               <motion.div
-                className="absolute inset-0 rounded-full bg-black shadow-[0_0_100px_20px_rgba(138,43,226,0.5)]"
-                animate={{
-                  rotate: 360,
-                  scale: [1, 1.1, 1],
-                }}
-                transition={{
-                  duration: 20,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="w-full flex justify-center items-center mb-8"
               >
-                <div className="absolute inset-2 rounded-full bg-gradient-conic from-purple-900 via-indigo-900 to-purple-900 opacity-50" />
-                <div className="absolute inset-0 rounded-full bg-black opacity-80" />
-                <div className="absolute inset-0 rounded-full bg-gradient-radial from-transparent to-purple-900/50" />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-4 border-purple-500/30"
-                  animate={{
-                    rotate: 360,
-                    scale: [1, 1.2, 1],
-                  }}
-                  transition={{
-                    duration: 10,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                />
+                <div className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                  Scam Protection Active
+                </div>
               </motion.div>
-            </div>
+            )}
 
             <h1 className="text-7xl font-bold mb-6 leading-tight tracking-tight">
               <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
@@ -333,6 +337,40 @@ export default function Component() {
                     </Button>
                   )}
                 </div>
+                {accounts.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6"
+                  >
+                    <div className="grid grid-cols-4 gap-4 max-w-3xl mx-auto bg-black/30 p-4 rounded-lg border border-purple-500/20">
+                      <div>
+                        <p className="text-purple-300">Token Accounts</p>
+                        <p className="text-2xl text-purple-400">
+                          {accounts.filter(a => a.type === 'token').length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-purple-300">Open Orders</p>
+                        <p className="text-2xl text-purple-400">
+                          {accounts.filter(a => a.type === 'openOrder').length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-purple-300">Undeployed</p>
+                        <p className="text-2xl text-purple-400">
+                          {accounts.filter(a => a.type === 'undeployed').length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-purple-300">Total SOL</p>
+                        <p className="text-2xl text-purple-400">
+                          {(accounts.length * RENT_AFTER_FEE).toFixed(4)}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
                 <AnimatePresence>
                   {accounts.length > 0 && (
                     <motion.div
@@ -344,18 +382,40 @@ export default function Component() {
                       {accounts.map((account) => (
                         <Card
                           key={account.pubkey.toString()}
-                          className={`${account.isAssociated
-                            ? 'bg-purple-900/30 border-purple-500/30'
-                            : 'bg-red-900/30 border-red-500/30'
+                          className={`${account.type === 'token' ? 'bg-purple-900/30 border-purple-500/30' :
+                            account.type === 'openOrder' ? 'bg-blue-900/30 border-blue-500/30' :
+                              account.type === 'undeployed' ? 'bg-green-900/30 border-green-500/30' :
+                                'bg-red-900/30 border-red-500/30'
                             }`}
                         >
                           <CardContent className="p-4">
-                            <p className="text-purple-300 truncate">{account.pubkey.toString()}</p>
-                            <p className="text-purple-400">Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}</p>
-                            <p className="text-purple-400">Balance: {account.balance}</p>
-                            <p className={`${account.isAssociated ? 'text-purple-400' : 'text-red-400'}`}>
-                              {account.isAssociated ? 'Associated Account' : 'Unknown Account'}
+                            <div className="flex justify-between items-start mb-2">
+                              <span className={`text-xs px-2 py-1 rounded-full ${account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
+                                account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
+                                  account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
+                                    'bg-red-500/20 text-red-300'
+                                }`}>
+                                {account.type}
+                              </span>
+                              <span className="text-sm text-purple-300/70">
+                                {RENT_AFTER_FEE.toFixed(8)} SOL
+                              </span>
+                            </div>
+                            <p className="text-purple-300 text-sm truncate font-mono">
+                              {account.pubkey.toString()}
                             </p>
+                            <p className="text-purple-400 text-sm">
+                              Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-purple-500/20 flex justify-between items-center">
+                              <span className="text-sm text-purple-300/70">
+                                Balance: {account.balance}
+                              </span>
+                              <span className={`text-xs px-2 py-1 rounded-full ${account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                                }`}>
+                                {account.isAssociated ? 'Associated' : 'Non-Associated'}
+                              </span>
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -379,6 +439,10 @@ export default function Component() {
             )}
           </motion.div>
         </main>
+        <SecurityStatus
+          isScanning={loading}
+          securityCheck={securityCheck}
+        />
       </div>
     </div>
   )
