@@ -1,6 +1,7 @@
 import { Connection, PublicKey, AccountInfo as SolanaAccountInfo } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
+import { withFallback } from "./rpc"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -205,10 +206,22 @@ export async function scanAllAccounts(connection: Connection, publicKey: PublicK
   logger.info('Starting comprehensive account scan', { publicKey: publicKey.toString() })
   
   const scannedAccounts = {
-    tokenAccounts: await scanTokenAccounts(connection, publicKey),
-    openOrders: await scanOpenOrders(connection, publicKey),
-    undeployedTokens: await scanUndeployedTokens(connection, publicKey),
-    unknownAccounts: await scanUnknownAccounts(connection, publicKey)
+    tokenAccounts: await withFallback(
+      (conn) => scanTokenAccounts(conn, publicKey),
+      connection
+    ),
+    openOrders: await withFallback(
+      (conn) => scanOpenOrders(conn, publicKey),
+      connection
+    ),
+    undeployedTokens: await withFallback(
+      (conn) => scanUndeployedTokens(conn, publicKey),
+      connection
+    ),
+    unknownAccounts: await withFallback(
+      (conn) => scanUnknownAccounts(conn, publicKey),
+      connection
+    )
   }
 
   const results: ScanResults = {

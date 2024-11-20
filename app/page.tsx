@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/pagination"
 import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
+import { Connection } from "@solana/web3.js"
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -154,7 +155,34 @@ export default function Component() {
     try {
       logger.info('Starting account scan', { publicKey: publicKey.toString() })
 
-      const scanResults = await scanAllAccounts(connection, publicKey)
+      // Try different RPC endpoints if the primary one fails
+      const endpoints = [
+        connection.rpcEndpoint,
+        'https://rpc.shyft.to?api_key=GXtK2hRLup638NN_',
+        'https://solana-mainnet.g.alchemy.com/v2/C191ERIvh8Hz0SAcEpq2_F3jr4wbMbHR'
+      ]
+
+      let scanResults
+      let endpointIndex = 0
+      let success = false
+
+      while (!success && endpointIndex < endpoints.length) {
+        try {
+          const currentConnection = new Connection(endpoints[endpointIndex])
+          scanResults = await scanAllAccounts(currentConnection, publicKey)
+          success = true
+        } catch (error) {
+          logger.error(`Error with endpoint ${endpoints[endpointIndex]}:`, error)
+          endpointIndex++
+          if (endpointIndex === endpoints.length) {
+            throw new Error('All RPC endpoints failed')
+          }
+        }
+      }
+
+      if (!scanResults) {
+        throw new Error('Failed to scan accounts')
+      }
 
       const securityCheck = await checkTransactionSecurity(
         connection,
@@ -176,7 +204,7 @@ export default function Component() {
         ...scanResults.unknownAccounts
       ].map(account => ({
         pubkey: account.pubkey,
-        mint: account.mint || 'unknown',  // Provide default for optional mint
+        mint: account.mint || 'unknown',
         balance: account.balance,
         isAssociated: account.isAssociated,
         type: account.type,
@@ -197,8 +225,9 @@ export default function Component() {
         description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const closeAccounts = async () => {
