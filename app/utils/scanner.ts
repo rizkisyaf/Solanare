@@ -122,29 +122,37 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
 }
 
 async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
-  const allAccounts = await Promise.all(
-    Object.entries(KNOWN_PROGRAMS).map(async ([name, programId]) => {
-      const programAccounts = await connection.getProgramAccounts(programId, {
-        filters: [
-          { dataSize: 3228 },
-          { memcmp: { offset: 13, bytes: publicKey.toBase58() } }
-        ]
+  try {
+    const allAccounts = await Promise.all(
+      Object.entries(KNOWN_PROGRAMS).map(async ([name, programId]) => {
+        try {
+          const programAccounts = await connection.getProgramAccounts(programId, {
+            filters: [
+              { dataSize: 3228 },
+              { memcmp: { offset: 13, bytes: publicKey.toBase58() } }
+            ]
+          })
+          return programAccounts.map(account => ({
+            pubkey: account.pubkey,
+            balance: 0,
+            isAssociated: false,
+            type: 'openOrder' as const,
+            programId,
+            rentExemption: RENT_EXEMPTION,
+            isCloseable: true,
+            closeWarning: ''
+          }))
+        } catch (error) {
+          logger.error(`Failed to scan program ${name}:`, error)
+          return []
+        }
       })
-
-      return programAccounts.map(account => ({
-        pubkey: account.pubkey,
-        balance: 0,
-        isAssociated: false,
-        type: 'openOrder' as const,
-        programId,
-        rentExemption: RENT_EXEMPTION,
-        isCloseable: true,
-        closeWarning: ''
-      }))
-    })
-  )
-
-  return allAccounts.flat()
+    )
+    return allAccounts.flat()
+  } catch (error) {
+    logger.error('Error scanning open orders:', error)
+    return []
+  }
 }
 
 async function scanUndeployedTokens(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {

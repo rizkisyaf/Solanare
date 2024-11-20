@@ -3,9 +3,6 @@ import { logger } from './logger'
 
 const RPC_ENDPOINTS = [
   'https://mercedes-iuhmrd-fast-mainnet.helius-rpc.com',
-  'https://rpc.shyft.to?api_key=GXtK2hRLup638NN_',
-  'https://api.mainnet-beta.solana.com',
-  'https://solana-mainnet.g.alchemy.com/v2/C191ERIvh8Hz0SAcEpq2_F3jr4wbMbHR'
 ]
 
 export const withFallback = async <T>(
