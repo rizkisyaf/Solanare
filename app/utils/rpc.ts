@@ -2,7 +2,7 @@ import { Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
 const RPC_ENDPOINTS = [
-  'https://mainnet.helius-rpc.com/?api-key=36f83a1d-2b11-4683-a989-09d628cb5b95',
+  'https://mercedes-iuhmrd-fast-mainnet.helius-rpc.com',
   'https://rpc.shyft.to?api_key=GXtK2hRLup638NN_',
   'https://api.mainnet-beta.solana.com',
   'https://solana-mainnet.g.alchemy.com/v2/C191ERIvh8Hz0SAcEpq2_F3jr4wbMbHR'
