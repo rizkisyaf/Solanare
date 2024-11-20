@@ -312,35 +312,28 @@ export default function Component() {
     }
   }
 
-  // Calculate pagination
-  const totalPages = Math.ceil(accounts.length / itemsPerPage)
-  const currentAccounts = accounts.slice(
+  // Add this after the useState hooks
+  const filteredAccounts = accounts.filter(account => {
+    if (balanceFilter.filterType === 'zero-only') return account.balance === 0
+    if (balanceFilter.filterType === 'non-zero-only') return account.balance > 0
+    if (balanceFilter.filterType === 'custom') {
+      return account.balance <= balanceFilter.max!
+    }
+    return true
+  }).filter(account => {
+    if (!balanceFilter.includeFreezable && account.hasFreezingAuthority) return false
+    if (!balanceFilter.includeMintable && account.isMintable) return false
+    return true
+  })
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage)
+
+  // Get current page accounts
+  const currentAccounts = filteredAccounts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   )
-
-  const filteredAccounts = accounts.filter(account => {
-    // Filter by balance
-    if (balanceFilter.filterType === 'zero-only' && account.balance > 0) {
-      return false
-    }
-    if (balanceFilter.filterType === 'non-zero-only' && account.balance === 0) {
-      return false
-    }
-    if (balanceFilter.filterType === 'custom' && balanceFilter.max !== null) {
-      if (account.balance > balanceFilter.max) return false
-    }
-
-    // Filter by token attributes
-    if (!balanceFilter.includeFreezable && account.hasFreezingAuthority) {
-      return false
-    }
-    if (!balanceFilter.includeMintable && account.isMintable) {
-      return false
-    }
-
-    return true
-  })
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -456,29 +449,40 @@ export default function Component() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-6"
                   >
-                    <div className="grid grid-cols-4 gap-4 max-w-3xl mx-auto bg-black/30 p-4 rounded-lg border border-purple-500/20">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto bg-black/30 p-4 rounded-lg border border-purple-500/20">
                       <div>
-                        <p className="text-purple-300">Token Accounts</p>
+                        <p className="text-purple-300">Closeable Accounts</p>
                         <p className="text-2xl text-purple-400">
-                          {accounts.filter(a => a.type === 'token').length}
+                          {accounts.filter(a => a.isCloseable).length}
+                        </p>
+                        <p className="text-sm text-purple-300/70">
+                          {(accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE).toFixed(4)} SOL
                         </p>
                       </div>
                       <div>
-                        <p className="text-purple-300">Open Orders</p>
+                        <p className="text-purple-300">Non-Closeable</p>
                         <p className="text-2xl text-purple-400">
-                          {accounts.filter(a => a.type === 'openOrder').length}
+                          {accounts.filter(a => !a.isCloseable).length}
+                        </p>
+                        <p className="text-sm text-purple-300/70">
+                          {(accounts.filter(a => !a.isCloseable).length * RENT_EXEMPTION).toFixed(4)} SOL
                         </p>
                       </div>
                       <div>
-                        <p className="text-purple-300">Undeployed</p>
-                        <p className="text-2xl text-purple-400">
-                          {accounts.filter(a => a.type === 'undeployed').length}
-                        </p>
+                        <p className="text-purple-300">Account Types</p>
+                        <div className="text-sm text-purple-300/70 space-y-1">
+                          <p>Token: {accounts.filter(a => a.type === 'token').length}</p>
+                          <p>Orders: {accounts.filter(a => a.type === 'openOrder').length}</p>
+                          <p>Undeployed: {accounts.filter(a => a.type === 'undeployed').length}</p>
+                        </div>
                       </div>
                       <div>
                         <p className="text-purple-300">Total SOL</p>
-                        <p className="text-2xl text-purple-400">
-                          {(accounts.length * RENT_AFTER_FEE).toFixed(4)}
+                        <p className="text-2xl text-green-400">
+                          {(accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE).toFixed(4)}
+                        </p>
+                        <p className="text-sm text-red-400/70">
+                          +{(accounts.filter(a => !a.isCloseable).length * RENT_EXEMPTION).toFixed(4)} locked
                         </p>
                       </div>
                     </div>
@@ -492,7 +496,7 @@ export default function Component() {
                       exit={{ opacity: 0, y: -20 }}
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
-                      {filteredAccounts.map((account) => (
+                      {currentAccounts.map((account) => (
                         <Card
                           key={account.pubkey.toString()}
                           className={`${account.type === 'token' ? 'bg-purple-900/30 border-purple-500/30' :
@@ -563,7 +567,7 @@ export default function Component() {
                 </AnimatePresence>
 
                 {/* Add pagination */}
-                {accounts.length > itemsPerPage && (
+                {filteredAccounts.length > itemsPerPage && (
                   <div className="mt-8 mb-12">
                     <Pagination>
                       <PaginationContent>
