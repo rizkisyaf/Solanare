@@ -414,6 +414,54 @@ export default function Component() {
               Watch your zero-balance accounts disappear into the cosmic void, reclaiming precious SOL
             </p>
 
+            {/* Add Token Info Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-12 p-4 bg-purple-900/20 border border-purple-500/20 rounded-lg max-w-xl mx-auto"
+            >
+              <div className="text-center space-y-3">
+                <h3 className="text-xl font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                  $SOLANARE Token
+                </h3>
+                <div className="flex items-center justify-center gap-2">
+                  <code className="bg-black/30 px-3 py-1 rounded-lg text-purple-300 font-mono text-sm">
+                    14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                    onClick={() => {
+                      navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
+                      toast({
+                        title: "Address Copied",
+                        description: "Token address copied to clipboard",
+                      })
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </Button>
+                </div>
+                <p className="text-sm text-purple-300/70">
+                  Now available on Moonshot 🚀
+                </p>
+              </div>
+            </motion.div>
+
             {publicKey ? (
               <div className="space-y-8">
                 <div className="flex justify-center gap-4">
