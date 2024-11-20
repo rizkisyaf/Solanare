@@ -27,7 +27,6 @@ import {
 import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 import { Connection } from "@solana/web3.js"
-import { Analytics } from "@vercel/analytics/react"
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -627,8 +626,6 @@ export default function Component() {
         isScanning={loading}
         securityCheck={securityCheck}
       />
-
-      <Analytics />
     </div>
   )
 }

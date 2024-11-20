@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClientWalletProvider } from "./providers/WalletProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
       height: 630,
       alt: 'Solanare - Solana Token Account Manager',
       type: 'image/png',
+      secureUrl: 'https://solanare.claims/og-logo.png',
     }],
   },
   twitter: {
@@ -42,6 +44,14 @@ export const metadata: Metadata = {
       height: 630,
       alt: 'Solanare - Solana Token Account Manager'
     }],
+  },
+  other: {
+    'og:image': 'https://solanare.claims/og-logo.png',
+    'og:image:secure_url': 'https://solanare.claims/og-logo.png',
+    'og:image:type': 'image/png',
+    'og:image:width': '1200',
+    'og:image:height': '630',
+    'og:type': 'website',
   }
 };
 
@@ -57,6 +67,7 @@ export default function RootLayout({
           <ClientWalletProvider>
             {children}
             <Toaster />
+            <Analytics />
           </ClientWalletProvider>
         </ErrorBoundary>
       </body>

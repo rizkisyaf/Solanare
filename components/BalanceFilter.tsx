@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useState } from "react"
 import type { BalanceFilter } from "@/app/types/accounts"
+import { motion } from "framer-motion"
 
 interface BalanceFilterProps {
   onFilterChange: (filter: BalanceFilter) => void
@@ -29,58 +30,85 @@ export function BalanceFilter({ onFilterChange }: BalanceFilterProps) {
   }
 
   return (
-    <div className="bg-black/30 p-6 rounded-lg border border-purple-500/20 mb-4 space-y-6">
-      <div>
-        <h3 className="text-purple-300 mb-3">Account Filter Options</h3>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-br from-purple-950/30 to-black/40 backdrop-blur-sm p-8 rounded-2xl border border-purple-500/20 mb-6 space-y-8"
+    >
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold bg-gradient-to-r from-purple-300 to-purple-500 bg-clip-text text-transparent">
+          Filter Settings
+        </h3>
         <RadioGroup
           defaultValue="all"
           onValueChange={(value) => {
             setFilterType(value as any)
             updateFilters({ filterType: value as any })
           }}
+          className="grid grid-cols-2 gap-4"
         >
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <RadioGroupItem value="all" id="all" />
-              <Label htmlFor="all" className="ml-2 text-purple-300">Show All Accounts</Label>
+          {[
+            { value: 'all', label: 'All Accounts' },
+            { value: 'zero-only', label: 'Zero Balance' },
+            { value: 'non-zero-only', label: 'Non-Zero Balance' },
+            { value: 'custom', label: 'Custom Range' }
+          ].map(({ value, label }) => (
+            <div key={value} className="relative">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="group"
+              >
+                <RadioGroupItem
+                  value={value}
+                  id={value}
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor={value}
+                  className="flex items-center justify-center p-4 rounded-xl border border-purple-500/20 bg-black/20 
+                    cursor-pointer transition-all duration-200 
+                    hover:bg-purple-950/20 hover:border-purple-400/30
+                    peer-checked:bg-purple-950/40 peer-checked:border-purple-400/50
+                    text-purple-300/70 peer-checked:text-purple-200"
+                >
+                  {label}
+                </Label>
+              </motion.div>
             </div>
-            <div className="flex items-center">
-              <RadioGroupItem value="zero-only" id="zero" />
-              <Label htmlFor="zero" className="ml-2 text-purple-300">Zero Balance Only</Label>
-            </div>
-            <div className="flex items-center">
-              <RadioGroupItem value="non-zero-only" id="non-zero" />
-              <Label htmlFor="non-zero" className="ml-2 text-purple-300">Non-Zero Balance Only</Label>
-            </div>
-            <div className="flex items-center">
-              <RadioGroupItem value="custom" id="custom" />
-              <Label htmlFor="custom" className="ml-2 text-purple-300">Custom Balance Range</Label>
-            </div>
-          </div>
+          ))}
         </RadioGroup>
       </div>
 
       {filterType === 'custom' && (
-        <div className="space-y-4">
-          <label className="text-sm text-purple-300">Maximum Balance</label>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="space-y-4 pt-4 border-t border-purple-500/20"
+        >
+          <label className="text-sm text-purple-300/80">Maximum Balance</label>
           <Slider
             defaultValue={[100]}
             max={1000}
             step={10}
+            className="py-4"
             onValueChange={(value) => {
               setMaxBalance(value[0])
               updateFilters({ max: value[0] })
             }}
           />
-          <div className="text-sm text-purple-300/70">
-            Max Balance: {maxBalance} tokens
+          <div className="text-sm text-purple-400">
+            Max Balance: <span className="text-purple-300">{maxBalance} tokens</span>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm text-purple-300">Include Freezable Tokens</Label>
+      <div className="space-y-4 pt-4 border-t border-purple-500/20">
+        <div className="flex items-center justify-between group p-2 rounded-lg hover:bg-purple-950/20 transition-colors">
+          <Label className="text-purple-300/80 group-hover:text-purple-300 transition-colors">
+            Include Freezable Tokens
+          </Label>
           <Switch
             checked={includeFreezable}
             onCheckedChange={(checked) => {
@@ -89,8 +117,10 @@ export function BalanceFilter({ onFilterChange }: BalanceFilterProps) {
             }}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <Label className="text-sm text-purple-300">Include Mintable Tokens</Label>
+        <div className="flex items-center justify-between group p-2 rounded-lg hover:bg-purple-950/20 transition-colors">
+          <Label className="text-purple-300/80 group-hover:text-purple-300 transition-colors">
+            Include Mintable Tokens
+          </Label>
           <Switch
             checked={includeMintable}
             onCheckedChange={(checked) => {
@@ -100,6 +130,6 @@ export function BalanceFilter({ onFilterChange }: BalanceFilterProps) {
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
