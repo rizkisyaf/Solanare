@@ -2,6 +2,7 @@ import { Connection, PublicKey, AccountInfo as SolanaAccountInfo } from "@solana
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
+import { createCloseAccountMessage } from "./transactions"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -50,13 +51,22 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
       
       // Calculate estimated closing cost
       const rentExemption = RENT_EXEMPTION
-      const estimatedFee = await connection.getRecentBlockhash()
-        .then(res => res.feeCalculator.lamportsPerSignature)
-      const estimatedCloseCost = estimatedFee * 2 // Approximate cost for close transaction
+      const estimatedCloseCost = async (connection: Connection) => {
+        try {
+          const message = await createCloseAccountMessage(connection, publicKey, account.pubkey)
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+          const response = await connection.getFeeForMessage(message.compileMessage())
+          return response.value || 5000 // fallback to default if null
+        } catch (error) {
+          logger.error('Error estimating close cost:', error)
+          return 5000 // fallback to default on error
+        }
+      }
       
       // Check if account has enough SOL to pay for closing
+      const closeEstimate = await estimatedCloseCost(connection)
       const userBalance = await connection.getBalance(publicKey)
-      const canPayForClose = userBalance >= estimatedCloseCost
+      const canPayForClose = userBalance >= closeEstimate
 
       // Determine closeability and warning message
       let isCloseable = true
@@ -95,7 +105,7 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
         isFrozen: parsedInfo.state === 'frozen',
         isMintable: !!mintInfo.mintAuthority,
         hasFreezingAuthority: !!mintInfo.freezeAuthority,
-        estimatedCloseCost,
+        estimatedCloseCost: await estimatedCloseCost(connection),
         isCloseable,
         closeWarning
       }

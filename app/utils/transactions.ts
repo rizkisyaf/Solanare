@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction } from "@solana/web3.js"
+import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
 import { createCloseAccountInstruction } from "@solana/spl-token"
 import { logger } from "./logger"
 
@@ -92,4 +92,19 @@ export async function closeTokenAccount(
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     }
   }
+}
+
+export async function createCloseAccountMessage(
+  connection: Connection,
+  owner: PublicKey,
+  accountToClose: PublicKey
+) {
+  const transaction = new Transaction().add(
+    createCloseAccountInstruction(
+      accountToClose,
+      owner,
+      owner,
+    )
+  )
+  return transaction
 } 
