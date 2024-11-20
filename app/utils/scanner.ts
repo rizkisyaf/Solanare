@@ -40,29 +40,37 @@ const RENT_EXEMPTION = 0.00203928
 
 async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
   const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
-  
+
   return Promise.all(
     accounts.value.map(async account => {
       const parsedInfo = account.account.data.parsed.info
       const mint = new PublicKey(parsedInfo.mint)
-      
+
       // Get mint info to check authorities
-      const mintInfo = await getMint(connection, mint)  
-      
+      const mintInfo = await getMint(connection, mint)
+
       // Calculate estimated closing cost
       const rentExemption = RENT_EXEMPTION
       const estimatedCloseCost = async (connection: Connection) => {
         try {
-          const message = await createCloseAccountMessage(connection, publicKey, account.pubkey)
+          // Get latest blockhash first
           const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-          const response = await connection.getFeeForMessage(message.compileMessage())
+
+          // Create transaction and set recent blockhash
+          const transaction = await createCloseAccountMessage(connection, publicKey, account.pubkey)
+          transaction.recentBlockhash = blockhash
+          transaction.feePayer = publicKey
+
+          // Now we can safely compile and get fee
+          const message = transaction.compileMessage()
+          const response = await connection.getFeeForMessage(message)
           return response.value || 5000 // fallback to default if null
         } catch (error) {
           logger.error('Error estimating close cost:', error)
           return 5000 // fallback to default on error
         }
       }
-      
+
       // Check if account has enough SOL to pay for closing
       const closeEstimate = await estimatedCloseCost(connection)
       const userBalance = await connection.getBalance(publicKey)
@@ -119,10 +127,10 @@ async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Pro
       const programAccounts = await connection.getProgramAccounts(programId, {
         filters: [
           { dataSize: 3228 },
-          { memcmp: { offset: 13, bytes: publicKey.toBase58() }}
+          { memcmp: { offset: 13, bytes: publicKey.toBase58() } }
         ]
       })
-      
+
       return programAccounts.map(account => ({
         pubkey: account.pubkey,
         balance: 0,
@@ -135,7 +143,7 @@ async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Pro
       }))
     })
   )
-  
+
   return allAccounts.flat()
 }
 
@@ -143,7 +151,7 @@ async function scanUndeployedTokens(connection: Connection, publicKey: PublicKey
   const accounts = await connection.getParsedProgramAccounts(TOKEN_PROGRAM_ID, {
     filters: [
       { dataSize: 165 },
-      { memcmp: { offset: 32, bytes: publicKey.toBase58() }}
+      { memcmp: { offset: 32, bytes: publicKey.toBase58() } }
     ]
   })
 
@@ -206,7 +214,7 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
     .reduce((total, accounts) => {
       return Array.isArray(accounts) ? total + accounts.length : total
     }, 0)
-  
+
   if (unknownCount === 0) return 'low'
   if (unknownCount / totalCount < 0.3) return 'medium'
   return 'high'
@@ -214,7 +222,7 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
 
 export async function scanAllAccounts(connection: Connection, publicKey: PublicKey): Promise<ScanResults> {
   logger.info('Starting comprehensive account scan', { publicKey: publicKey.toString() })
-  
+
   const scannedAccounts = {
     tokenAccounts: await withFallback(
       (conn) => scanTokenAccounts(conn, publicKey),

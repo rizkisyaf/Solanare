@@ -98,13 +98,12 @@ export async function createCloseAccountMessage(
   connection: Connection,
   owner: PublicKey,
   accountToClose: PublicKey
-) {
-  const transaction = new Transaction().add(
+): Promise<Transaction> {
+  return new Transaction().add(
     createCloseAccountInstruction(
       accountToClose,
       owner,
-      owner,
+      owner
     )
   )
-  return transaction
 } 
