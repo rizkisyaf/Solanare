@@ -1,8 +1,12 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_VERCEL_URL 
+  ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+  : 'http://localhost:3000'
+
 export function getConnection(commitment: Commitment = 'confirmed') {
-  const rpcUrl = '/api/rpc'
+  const rpcUrl = `${API_BASE_URL}/api/rpc`
   return new Connection(rpcUrl, {
     commitment,
     fetch: async (url, options) => {
@@ -36,7 +40,7 @@ export async function withFallback<T>(
 }
 
 export async function getPriorityFee(encodedTransaction: string): Promise<number> {
-  const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`, {
+  const response = await fetch(`${API_BASE_URL}/api/rpc`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -53,5 +57,5 @@ export async function getPriorityFee(encodedTransaction: string): Promise<number
   });
 
   const data = await response.json();
-  return data.result.priorityFeeEstimate;
+  return data?.result?.priorityFee || 1;
 }

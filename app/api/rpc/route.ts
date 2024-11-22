@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`
+
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  
   try {
-    const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`, {
+    const body = await req.json()
+    
+    const response = await fetch(HELIUS_RPC_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -15,6 +17,10 @@ export async function POST(req: NextRequest) {
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
-    return NextResponse.json({ error: 'RPC request failed' }, { status: 500 })
+    console.error('RPC proxy error:', error)
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
   }
 } 
