@@ -55,6 +55,17 @@ const WalletMultiButton = dynamic(
   { ssr: false }
 )
 
+// Add these constants at the top with other constants
+const ITEMS_PER_PAGE = 10 // Reduced from 15 for better UX
+const DEFAULT_FILTER: BalanceFilter = {
+  min: 0,
+  max: 0,
+  includeNonZero: false,
+  includeFreezable: false,
+  includeMintable: false,
+  filterType: 'all'
+}
+
 export default function Component() {
   // Group all useState hooks together
   const [mounted, setMounted] = useState(false)
@@ -63,15 +74,7 @@ export default function Component() {
   const [closing, setClosing] = useState(false)
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 15
-  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>({
-    min: 0,
-    max: 0,
-    includeNonZero: false,
-    includeFreezable: false,
-    includeMintable: false,
-    filterType: 'all'
-  })
+  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>(DEFAULT_FILTER)
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -314,14 +317,20 @@ export default function Component() {
     return true
   })
 
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage)
+  // Add pagination calculation
+  const getPaginatedAccounts = (accounts: TokenAccount[]) => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    return accounts.slice(startIndex, endIndex)
+  }
 
-  // Get current page accounts
-  const currentAccounts = filteredAccounts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // Add total pages calculation
+  const getTotalPages = (totalItems: number) => {
+    return Math.ceil(totalItems / ITEMS_PER_PAGE)
+  }
+
+  const totalPages = getTotalPages(filteredAccounts.length)
+  const paginatedAccounts = getPaginatedAccounts(filteredAccounts)
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -532,7 +541,7 @@ export default function Component() {
                       exit={{ opacity: 0, y: -20 }}
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
-                      {currentAccounts.map((account) => (
+                      {paginatedAccounts.map((account) => (
                         <Card
                           key={account.pubkey.toString()}
                           className="relative overflow-hidden bg-black/30 border border-purple-500/20 hover:border-purple-500/40 transition-all"
@@ -610,36 +619,43 @@ export default function Component() {
                   )}
                 </AnimatePresence>
 
-                {/* Add pagination */}
-                {filteredAccounts.length > itemsPerPage && (
-                  <div className="mt-8 mb-12">
+                {/* Update pagination visibility condition */}
+                {filteredAccounts.length > ITEMS_PER_PAGE && (
+                  <div className="mt-8 mb-12 sticky bottom-0 bg-black/50 backdrop-blur-sm p-4">
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
                             href="#"
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            aria-disabled={currentPage === 1}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setCurrentPage(p => Math.max(1, p - 1))
+                            }}
+                            className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
                           />
                         </PaginationItem>
-                        {[...Array(totalPages)].map((_, i) => {
-                          const pageNumber = i + 1;
-                          return (
-                            <PaginationItem key={`page-${pageNumber}`}>
-                              <PaginationLink
-                                onClick={() => setCurrentPage(pageNumber)}
-                                isActive={currentPage === pageNumber}
-                              >
-                                {pageNumber}
-                              </PaginationLink>
-                            </PaginationItem>
-                          );
-                        })}
+                        {Array.from({length: totalPages}, (_, i) => (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(i + 1)
+                              }}
+                              isActive={currentPage === i + 1}
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
                         <PaginationItem>
                           <PaginationNext
                             href="#"
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            aria-disabled={currentPage === totalPages}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setCurrentPage(p => Math.min(totalPages, p + 1))
+                            }}
+                            className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
                           />
                         </PaginationItem>
                       </PaginationContent>

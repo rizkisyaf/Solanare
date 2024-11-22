@@ -1,28 +1,45 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://www.solanare.claims'
+const MAX_RETRIES = 3
+const RETRY_DELAY = 2000 // 2 seconds
+const MAX_BATCH_SIZE = 2
+const RATE_LIMIT_COOLDOWN = 30000 // 30 seconds
 
 export function getConnection(commitment: Commitment = 'processed') {
+  const handleResponse = async (response: Response) => {
+    if (response.status === 429) {
+      logger.warn('Rate limit reached, cooling down', {
+        details: { cooldown: RATE_LIMIT_COOLDOWN }
+      })
+      await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_COOLDOWN))
+      throw new Error('RATE_LIMIT')
+    }
+    return response
+  }
+
   return new Connection(
-    'https://mainnet.helius-rpc.com/?api-key=36f83a1d-2b11-4683-a989-09d628cb5b95',
+    process.env.NEXT_PUBLIC_RPC_ENDPOINT!,
     {
       commitment,
       confirmTransactionInitialTimeout: 60000,
       wsEndpoint: undefined,
       fetch: async (url, options) => {
-        const response = await fetch(url, {
-          ...options,
-          headers: {
-            'Content-Type': 'application/json',
+        for (let i = 0; i < MAX_RETRIES; i++) {
+          try {
+            const response = await fetch(url, {
+              ...options,
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            })
+            return handleResponse(response)
+          } catch (error) {
+            if (i === MAX_RETRIES - 1) throw error
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
           }
-        })
-        
-        // Log connection type
-        const connectionType = response.headers.get('X-Helius-ConnectionType')
-        logger.info('Helius connection type', { connectionType })
-        
-        return response
+        }
+        throw new Error('Max retries exceeded')
       }
     }
   )
@@ -46,7 +63,7 @@ export async function withFallback<T>(
 }
 
 export async function getPriorityFee(encodedTransaction: string): Promise<number> {
-  const response = await fetch(`${API_BASE_URL}/api/rpc`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rpc`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
