@@ -41,7 +41,11 @@ const RENT_EXEMPTION = 0.00203928
 async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
   return rateLimit(async () => {
     try {
-      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
+      const accounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey, 
+        { programId: TOKEN_PROGRAM_ID },
+        'processed'
+      )
       
       const results = await Promise.allSettled(
         accounts.value.map(async account => {
@@ -53,129 +57,71 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
 
             const parsedInfo = account.account.data.parsed.info
             const mint = new PublicKey(parsedInfo.mint)
-            const mintInfo = await getMint(connection, mint)
+            
+            try {
+              const mintInfo = await getMint(connection, mint)
+              const closeEstimate = await estimatedCloseCost(connection, publicKey, account.pubkey)
+              const userBalance = await connection.getBalance(publicKey, 'processed')
+              const canPayForClose = userBalance >= closeEstimate
 
-            // Calculate estimated closing cost
-            const rentExemption = RENT_EXEMPTION
-            const estimatedCloseCost = async (connection: Connection) => {
-              try {
-                // Get latest blockhash first
-                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-
-                // Create transaction and set recent blockhash
-                const transaction = await createCloseAccountMessage(connection, publicKey, account.pubkey)
-                transaction.recentBlockhash = blockhash
-                transaction.feePayer = publicKey
-
-                // Now we can safely compile and get fee
-                const message = transaction.compileMessage()
-                const response = await connection.getFeeForMessage(message)
-                return response.value || 5000 // fallback to default if null
-              } catch (error) {
-                logger.error('Error estimating close cost', {
-                  error,
-                  details: {
-                    account: account.pubkey.toString(),
-                    publicKey: publicKey.toString()
-                  }
-                });
-                return 5000 // fallback to default on error
+              // Rest of the account processing logic
+              return {
+                pubkey: account.pubkey,
+                mint: parsedInfo.mint,
+                balance: parsedInfo.tokenAmount.uiAmount || 0,
+                isAssociated: false, // Will be set later
+                type: 'token',
+                programId: TOKEN_PROGRAM_ID,
+                rentExemption: RENT_EXEMPTION,
+                isFrozen: parsedInfo.state === 'frozen',
+                isMintable: !!mintInfo.mintAuthority,
+                hasFreezingAuthority: !!mintInfo.freezeAuthority,
+                estimatedCloseCost: closeEstimate,
+                isCloseable: canPayForClose && parsedInfo.tokenAmount.amount === '0',
+                closeWarning: ''
               }
-            }
-            // Check if account has enough SOL to pay for closing
-            const closeEstimate = await estimatedCloseCost(connection)
-            const userBalance = await connection.getBalance(publicKey)
-            const canPayForClose = userBalance >= closeEstimate
-
-            // Determine closeability and warning message
-            let isCloseable = true
-            let closeWarning = ''
-
-            if (parsedInfo.tokenAmount.amount > 0) {
-              // Check if token is worth keeping
-              const isWorthless = await isTokenWorthless(connection, mint)
-              if (!isWorthless) {
-                closeWarning = 'Warning: Account has non-zero balance'
-              }
-            } else if (!canPayForClose) {
-              isCloseable = false
-              closeWarning = 'Cannot close: Insufficient SOL for transaction fee'
-            } else if (parsedInfo.state === 'frozen') {
-              isCloseable = false
-              closeWarning = 'Cannot close: Account is frozen'
-            }
-
-            // Add warning tags but don't prevent closing
-            const hasFreezingAuthority = !!mintInfo.freezeAuthority
-            const isMintable = !!mintInfo.mintAuthority
-
-            const ata = await getAssociatedTokenAddress(
-              mint,
-              publicKey,
-              false,
-              TOKEN_PROGRAM_ID,
-              ASSOCIATED_TOKEN_PROGRAM_ID
-            )
-            return {
-              pubkey: account.pubkey,
-              mint: parsedInfo.mint,
-              balance: parsedInfo.tokenAmount.uiAmount,
-              isAssociated: account.pubkey.equals(ata),
-              type: 'token' as const,
-              programId: TOKEN_PROGRAM_ID,
-              rentExemption: RENT_EXEMPTION,
-              isFrozen: parsedInfo.state === 'frozen',
-              isMintable: isMintable,
-              hasFreezingAuthority: hasFreezingAuthority,
-              estimatedCloseCost: await estimatedCloseCost(connection),
-              isCloseable,
-              closeWarning
+            } catch (error) {
+              logger.error('Error processing token account', { error, account: account.pubkey.toString() })
+              return null
             }
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-            logger.error('Error scanning token accounts', {
-              error: {
-                message: errorMessage,
-                stack: error instanceof Error ? error.stack : undefined
-              },
-              details: {
-                publicKey: publicKey.toString(),
-                operation: 'scanTokenAccounts',
-                programId: TOKEN_PROGRAM_ID.toString()
-              }
-            });
-            return [];
+            logger.error('Error scanning token account', { error, account })
+            return null
           }
         })
       )
+
       return results
-        .filter((result): result is PromiseFulfilledResult<{
-          pubkey: PublicKey;
-          mint: any;
-          balance: any;
-          isAssociated: boolean;
-          type: "token";
-          programId: PublicKey;
-          rentExemption: number;
-          isFrozen: boolean;
-          isMintable: boolean;
-          hasFreezingAuthority: boolean;
-          estimatedCloseCost: number;
-          isCloseable: boolean;
-          closeWarning: string;
-        }> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value)
+        .filter((result): result is PromiseFulfilledResult<AccountInfo | null> => 
+          result.status === 'fulfilled' && result.value !== null
+        )
+        .map(result => result.value as AccountInfo)
+
     } catch (error) {
-      logger.error('Error scanning token accounts', {
-        error,
-        details: {
-          publicKey: publicKey.toString(),
-          operation: 'scanTokenAccounts'
-        }
-      });
+      logger.error('Error scanning token accounts', { error })
       return []
     }
-  });
+  })
+}
+
+async function estimatedCloseCost(
+  connection: Connection,
+  wallet: PublicKey,
+  accountToClose: PublicKey
+): Promise<number> {
+  try {
+    const { blockhash } = await connection.getLatestBlockhash('processed')
+    const transaction = await createCloseAccountMessage(connection, wallet, accountToClose)
+    transaction.recentBlockhash = blockhash
+    transaction.feePayer = wallet
+    
+    const message = transaction.compileMessage()
+    const response = await connection.getFeeForMessage(message, 'processed')
+    return response.value || 5000
+  } catch (error) {
+    logger.warn('Error estimating close cost', { error })
+    return 5000 // Default fallback
+  }
 }
 
 async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
