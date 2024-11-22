@@ -3,11 +3,13 @@ import { logger } from './logger'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://www.solanare.claims'
 
-export function getConnection(commitment: Commitment = 'confirmed') {
+export function getConnection(commitment: Commitment = 'processed') {
   const rpcUrl = `${API_BASE_URL}/api/rpc`
   
   return new Connection(rpcUrl, {
     commitment,
+    confirmTransactionInitialTimeout: 60000,
+    wsEndpoint: undefined,
     fetch: async (url, options) => {
       try {
         const response = await fetch(url, {

@@ -2,8 +2,8 @@ import { Connection, PublicKey, AccountInfo as SolanaAccountInfo } from "@solana
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
-import { createCloseAccountMessage } from "./transactions"
 import { rateLimit } from "./rateLimit"
+import { createCloseAccountMessage } from "./transactions"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -50,7 +50,7 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
               logger.warn('Invalid account data structure', { account })
               return null
             }
-            
+
             const parsedInfo = account.account.data.parsed.info
             const mint = new PublicKey(parsedInfo.mint)
             const mintInfo = await getMint(connection, mint)

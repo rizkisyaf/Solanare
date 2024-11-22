@@ -1,134 +1,78 @@
-import { Connection, PublicKey, Transaction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction, SystemProgram } from "@solana/web3.js"
-import { createCloseAccountInstruction, createBurnInstruction } from "@solana/spl-token"
+import { Connection, PublicKey, Transaction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction } from "@solana/web3.js"
+import { createCloseAccountInstruction } from "@solana/spl-token"
 import { logger } from "./logger"
 import { getPriorityFee } from "./rpc"
 import bs58 from 'bs58'
 
-interface TransactionResult {
-  signature: string
-  error?: string
-}
-
-const TRANSACTION_TIMEOUT = 60000; // 60 seconds
-const CONFIRMATION_INTERVAL = 5000; // 5 seconds
-
-// Add treasury constants
-const TREASURY_WALLET = new PublicKey("8QAUgSFQxMcuYCn3yDN28HuqBsbXq2Ac1rADo5AWh8S5")
-const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
-const RENT_EXEMPTION = 0.00203928
-const FEE_AMOUNT = RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE
-
-async function pollTransactionConfirmation(connection: Connection, signature: string): Promise<boolean> {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < TRANSACTION_TIMEOUT) {
-    const status = await connection.getSignatureStatus(signature);
-    if (status?.value?.confirmationStatus === 'confirmed') return true;
-    await new Promise(resolve => setTimeout(resolve, CONFIRMATION_INTERVAL));
-  }
-  
-  return false;
-}
+const TRANSACTION_TIMEOUT = 60000 // 60 seconds
+const CONFIRMATION_INTERVAL = 5000 // 5 seconds
+const COMPUTE_UNIT_LIMIT = 1_400_000 // Maximum compute units
+const COMPUTE_UNIT_PRICE = 1_000 // Base price in microlamports
 
 export async function closeTokenAccount(
   connection: Connection,
-  publicKey: PublicKey,
+  wallet: PublicKey,
   tokenAccount: PublicKey,
-  sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
-): Promise<TransactionResult> {
+  sendTransaction: (transaction: Transaction | VersionedTransaction, connection: Connection) => Promise<string>
+) {
   try {
-    // Build initial instructions
-    const instructions = [];
+    // Get latest blockhash with "processed" commitment
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('processed')
     
-    // Add platform fee transfer instruction
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: publicKey,
-        toPubkey: TREASURY_WALLET,
-        lamports: Math.floor(FEE_AMOUNT * 1e9) // Convert SOL to lamports
-      })
-    );
+    // Create base instruction
+    const closeInstruction = createCloseAccountInstruction(
+      tokenAccount,
+      wallet,
+      wallet
+    )
 
-    // Add burn instruction if needed
-    const accountInfo = await connection.getParsedAccountInfo(tokenAccount);
-    if (!accountInfo.value) throw new Error('Account not found');
+    // Create test transaction to simulate compute units
+    const testTx = new Transaction().add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: COMPUTE_UNIT_LIMIT }),
+      closeInstruction
+    )
+    testTx.feePayer = wallet
+    testTx.recentBlockhash = blockhash
+
+    // Simulate to get compute units consumed
+    const simulation = await connection.simulateTransaction(testTx)
+    const unitsConsumed = Math.ceil((simulation.value?.unitsConsumed || 0) * 1.1) // Add 10% margin
+
+    // Get priority fee estimate
+    const serializedTx = bs58.encode(testTx.serialize())
+    const priorityFee = await getPriorityFee(serializedTx)
+
+    // Build final transaction with optimized compute units and priority fee
+    const transaction = new Transaction().add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: unitsConsumed }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }),
+      closeInstruction
+    )
+
+    transaction.feePayer = wallet
+    transaction.recentBlockhash = blockhash
+
+    // Send transaction with skipPreflight
+    const signature = await sendTransaction(transaction, connection)
     
-    const parsedInfo = (accountInfo.value.data as any).parsed.info;
-    if (parsedInfo.tokenAmount.amount > 0) {
-      instructions.push(
-        createBurnInstruction(
-          tokenAccount,
-          new PublicKey(parsedInfo.mint),
-          publicKey,
-          parsedInfo.tokenAmount.amount,
-          []
-        )
-      );
+    // Poll for confirmation with timeout
+    const startTime = Date.now()
+    while (Date.now() - startTime < TRANSACTION_TIMEOUT) {
+      const status = await connection.getSignatureStatus(signature)
+      if (status?.value?.confirmationStatus === 'confirmed') {
+        return { signature }
+      }
+      await new Promise(resolve => setTimeout(resolve, CONFIRMATION_INTERVAL))
     }
 
-    // Add close instruction
-    instructions.push(
-      createCloseAccountInstruction(
-        tokenAccount,
-        publicKey,
-        publicKey,
-        []
-      )
-    );
-
-    // Get latest blockhash and build transaction
-    const { blockhash } = await connection.getLatestBlockhash('processed');
-    const messageV0 = new TransactionMessage({
-      payerKey: publicKey,
-      recentBlockhash: blockhash,
-      instructions
-    }).compileToV0Message();
-
-    const transaction = new VersionedTransaction(messageV0);
-
-    // Simulate to get compute units
-    const simulation = await connection.simulateTransaction(transaction);
-    const computeUnits = Math.ceil((simulation.value.unitsConsumed || 200000) * 1.1);
-
-    // Add compute budget instructions
-    instructions.unshift(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits })
-    );
-
-    // Get and set priority fee
-    const priorityFee = await getPriorityFee(bs58.encode(transaction.serialize()));
-    instructions.unshift(
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee })
-    );
-
-    // Rebuild final transaction
-    const finalMessage = new TransactionMessage({
-      payerKey: publicKey,
-      recentBlockhash: blockhash,
-      instructions
-    }).compileToV0Message();
-
-    const finalTransaction = new VersionedTransaction(finalMessage);
-
-    // Send and confirm
-    const signature = await sendTransaction(finalTransaction as any, connection);
-    const confirmed = await pollTransactionConfirmation(connection, signature);
-
-    if (!confirmed) {
-      throw new Error('Transaction confirmation timeout');
-    }
-
-    return { signature };
+    throw new Error('Transaction confirmation timeout')
 
   } catch (error) {
-    logger.error('Error closing token account:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+    logger.error('Failed to close token account', {
+      error,
       tokenAccount: tokenAccount.toString()
-    });
-    return {
-      signature: '',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    })
+    return { error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }
 
@@ -144,4 +88,4 @@ export async function createCloseAccountMessage(
       owner
     )
   )
-} 
+}

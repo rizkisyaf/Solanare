@@ -226,97 +226,79 @@ export default function Component() {
     }
 
     setClosing(true);
-    logger.info('Starting account closure', {
-      accountCount: accounts.length,
-      publicKey: publicKey.toString()
-    });
 
-    const closeableAccounts = accounts.filter(account => account.isCloseable);
-    if (closeableAccounts.length === 0) {
-      toast({
-        title: "No Closeable Accounts",
-        description: "None of the selected accounts can be closed at this time.",
-        variant: "destructive",
-      });
-      setClosing(false);
-      return;
-    }
-
-    let closedCount = 0;
-    let failedCount = 0;
-    let totalRentReclaimed = 0;
-
-    for (const account of closeableAccounts) {
-      try {
-        logger.info('Attempting to close account', {
-          account: account.pubkey.toString()
+    try {
+      const closeableAccounts = accounts.filter(account => account.isCloseable);
+      if (closeableAccounts.length === 0) {
+        toast({
+          title: "No Closeable Accounts",
+          description: "None of the selected accounts can be closed at this time.",
+          variant: "destructive",
         });
+        return;
+      }
 
-        // Use our optimized closeTokenAccount function
-        const result = await closeTokenAccount(
-          connection,
-          publicKey,
-          account.pubkey,
-          sendTransaction
-        );
+      let closedCount = 0;
+      let failedCount = 0;
+      let totalRentReclaimed = 0;
 
-        if (result.error) {
+      for (const account of closeableAccounts) {
+        try {
+          logger.info('Attempting to close account', {
+            account: account.pubkey.toString()
+          });
+
+          const result = await closeTokenAccount(
+            connection,
+            publicKey,
+            account.pubkey,
+            sendTransaction
+          );
+
+          if (result.error) {
+            failedCount++;
+            toast({
+              title: "Failed to Close Account",
+              description: result.error,
+              variant: "destructive",
+            });
+          } else {
+            closedCount++;
+            totalRentReclaimed += RENT_AFTER_FEE;
+            toast({
+              title: "Account Closed",
+              description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
+            });
+          }
+
+          // Add delay between transactions
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
           failedCount++;
-          logger.error('Failed to close account', {
-            error: result.error,
-            details: {
-              account: account.pubkey.toString(),
-              type: account.type,
-              mint: account.mint
-            }
-          });
-          
-          toast({
-            title: "Failed to Close Account",
-            description: result.error,
-            variant: "destructive",
-          });
-        } else {
-          closedCount++;
-          totalRentReclaimed += RENT_AFTER_FEE;
-          
-          toast({
-            title: "Account Closed",
-            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
+          logger.error('Error closing account:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            tokenAccount: account.pubkey.toString()
           });
         }
-
-        // Add delay between transactions
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
-        failedCount++;
-        logger.error('Error closing account:', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          tokenAccount: account.pubkey.toString()
-        });
       }
+
+      logger.info('Account closure complete', {
+        closedCount,
+        failedCount,
+        totalRentReclaimed
+      });
+
+    } catch (error) {
+      logger.error('Account closure failed', { error });
+      toast({
+        title: "Error",
+        description: "Failed to close accounts",
+        variant: "destructive",
+      });
+    } finally {
+      setClosing(false);
     }
-
-    logger.info('Account closure complete', {
-      closedCount,
-      failedCount,
-      totalRentReclaimed
-    });
-
-    setClosing(false);
-    
-    // Update UI with results
-    toast({
-      title: "Closure Complete", 
-      description: `Closed ${closedCount} accounts, reclaimed ${totalRentReclaimed.toFixed(4)} SOL`,
-      variant: closedCount > 0 ? "default" : "destructive",
-    });
-
-    // Refresh account list if any accounts were closed
-    if (closedCount > 0) {
-      await scanAccounts();
-    }
-  }
+  };
 
   // Add this after the useState hooks
   const filteredAccounts = accounts.filter(account => {
@@ -496,7 +478,7 @@ export default function Component() {
                 {accounts.length > 0 && (
                   <BalanceFilterComponent onFilterChange={setBalanceFilter} />
                 )}
-                
+
                 {accounts.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -551,19 +533,18 @@ export default function Component() {
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
                       {currentAccounts.map((account) => (
-                        <Card 
-                          key={account.pubkey.toString()} 
+                        <Card
+                          key={account.pubkey.toString()}
                           className="relative overflow-hidden bg-black/30 border border-purple-500/20 hover:border-purple-500/40 transition-all"
                         >
                           <CardContent className="p-6">
                             {/* Header with Type and Rent */}
                             <div className="flex justify-between items-start mb-4">
-                              <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                                account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
-                                account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
-                                account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
-                                'bg-red-500/20 text-red-300'
-                              }`}>
+                              <span className={`text-xs font-medium px-3 py-1 rounded-full ${account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
+                                  account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
+                                    account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
+                                      'bg-red-500/20 text-red-300'
+                                }`}>
                                 {account.type}
                               </span>
                               <div className="text-right">
@@ -591,7 +572,7 @@ export default function Component() {
                                   </span>
                                 )}
                                 {!account.isCloseable && (
-                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300" 
+                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300"
                                     title={account.closeWarning}>
                                     Not Closeable
                                   </span>
@@ -608,9 +589,8 @@ export default function Component() {
                                 <p className="text-purple-400 text-sm">
                                   Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}
                                 </p>
-                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                                  account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                                }`}>
+                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                                  }`}>
                                   {account.isAssociated ? 'Associated' : 'Non-Associated'}
                                 </span>
                               </div>
