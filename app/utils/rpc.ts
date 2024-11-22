@@ -1,25 +1,18 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-export const RPC_ENDPOINTS = [
-  'https://mercedes-iuhmrd-fast-mainnet.helius-rpc.com',
-  'https://solana-mainnet.g.alchemy.com/v2/C191ERIvh8Hz0SAcEpq2_F3jr4wbMbHR',
-  'https://api.mainnet-beta.solana.com'
-];
+const RPC_ENDPOINT = 'https://mercedes-iuhmrd-fast-mainnet.helius-rpc.com';
 
-let currentEndpointIndex = 0;
-
-export function getConnection(commitment: Commitment = 'confirmed'): Connection {
-  const endpoint = RPC_ENDPOINTS[currentEndpointIndex];
-  return new Connection(endpoint, {
+export function getConnection(commitment: Commitment = 'processed'): Connection {
+  return new Connection(RPC_ENDPOINT, {
     commitment,
     confirmTransactionInitialTimeout: 60000,
-    wsEndpoint: endpoint.replace('https://', 'wss://'),
+    wsEndpoint: RPC_ENDPOINT.replace('https://', 'wss://'),
+    httpHeaders: {
+      'Origin': 'https://www.solanare.claims',
+      'Content-Type': 'application/json',
+    }
   });
-}
-
-export function rotateEndpoint() {
-  currentEndpointIndex = (currentEndpointIndex + 1) % RPC_ENDPOINTS.length;
 }
 
 export async function withFallback<T>(
@@ -27,47 +20,35 @@ export async function withFallback<T>(
   _connection: Connection,
   headers?: Record<string, string>
 ): Promise<T> {
-  let attempts = 0;
-  const maxAttempts = RPC_ENDPOINTS.length * 2;
-
-  while (attempts < maxAttempts) {
-    try {
-      const modifiedConnection = getConnection(_connection.commitment);
-      
-      if (headers) {
-        const originalRequest = (modifiedConnection as any)._rpcRequest;
-        (modifiedConnection as any)._rpcRequest = async function (...args: any[]) {
-          if (args[1] && typeof args[1] === 'object') {
-            args[1].headers = { ...args[1].headers, ...headers };
-          } else {
-            args[1] = { headers };
-          }
-          return await originalRequest.apply(this, args);
-        };
-      }
-
-      return await operation(modifiedConnection);
-    } catch (error) {
-      attempts++;
-      
-      if (attempts === maxAttempts) {
-        logger.error('All RPC attempts failed:', {
-          error,
-          details: {
-            attempts,
-            currentEndpoint: RPC_ENDPOINTS[currentEndpointIndex]
-          }
-        });
-        throw error;
-      }
-
-      // Rotate to next endpoint
-      rotateEndpoint();
-      
-      // Add delay between retries
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+  try {
+    const connection = getConnection(_connection.commitment);
+    return await operation(connection);
+  } catch (error) {
+    logger.error('RPC operation failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      operation: operation.name
+    });
+    throw error;
   }
+}
 
-  throw new Error('Failed after all attempts');
+export async function getPriorityFee(encodedTransaction: string): Promise<number> {
+  const response = await fetch(RPC_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 'priority-fee',
+      method: 'getPriorityFeeEstimate',
+      params: [{
+        transaction: encodedTransaction,
+        options: { recommended: true }
+      }]
+    })
+  });
+
+  const data = await response.json();
+  return data.result.priorityFeeEstimate;
 }

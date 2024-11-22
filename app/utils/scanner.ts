@@ -3,6 +3,7 @@ import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddres
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
 import { createCloseAccountMessage } from "./transactions"
+import { rateLimit } from "./rateLimit"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -38,138 +39,140 @@ const KNOWN_PROGRAMS = {
 const RENT_EXEMPTION = 0.00203928
 
 async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
-  try {
-    const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
-    
-    const results = await Promise.allSettled(
-      accounts.value.map(async account => {
-        try {
-          const parsedInfo = account.account.data.parsed.info
-          const mint = new PublicKey(parsedInfo.mint)
-          const mintInfo = await getMint(connection, mint)
+  return rateLimit(async () => {
+    try {
+      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID })
+      
+      const results = await Promise.allSettled(
+        accounts.value.map(async account => {
+          try {
+            const parsedInfo = account.account.data.parsed.info
+            const mint = new PublicKey(parsedInfo.mint)
+            const mintInfo = await getMint(connection, mint)
 
-          // Calculate estimated closing cost
-          const rentExemption = RENT_EXEMPTION
-          const estimatedCloseCost = async (connection: Connection) => {
-            try {
-              // Get latest blockhash first
-              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+            // Calculate estimated closing cost
+            const rentExemption = RENT_EXEMPTION
+            const estimatedCloseCost = async (connection: Connection) => {
+              try {
+                // Get latest blockhash first
+                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
-              // Create transaction and set recent blockhash
-              const transaction = await createCloseAccountMessage(connection, publicKey, account.pubkey)
-              transaction.recentBlockhash = blockhash
-              transaction.feePayer = publicKey
+                // Create transaction and set recent blockhash
+                const transaction = await createCloseAccountMessage(connection, publicKey, account.pubkey)
+                transaction.recentBlockhash = blockhash
+                transaction.feePayer = publicKey
 
-              // Now we can safely compile and get fee
-              const message = transaction.compileMessage()
-              const response = await connection.getFeeForMessage(message)
-              return response.value || 5000 // fallback to default if null
-            } catch (error) {
-              logger.error('Error estimating close cost', {
-                error,
-                details: {
-                  account: account.pubkey.toString(),
-                  publicKey: publicKey.toString()
-                }
-              });
-              return 5000 // fallback to default on error
+                // Now we can safely compile and get fee
+                const message = transaction.compileMessage()
+                const response = await connection.getFeeForMessage(message)
+                return response.value || 5000 // fallback to default if null
+              } catch (error) {
+                logger.error('Error estimating close cost', {
+                  error,
+                  details: {
+                    account: account.pubkey.toString(),
+                    publicKey: publicKey.toString()
+                  }
+                });
+                return 5000 // fallback to default on error
+              }
             }
-          }
 
-          // Check if account has enough SOL to pay for closing
-          const closeEstimate = await estimatedCloseCost(connection)
-          const userBalance = await connection.getBalance(publicKey)
-          const canPayForClose = userBalance >= closeEstimate
+            // Check if account has enough SOL to pay for closing
+            const closeEstimate = await estimatedCloseCost(connection)
+            const userBalance = await connection.getBalance(publicKey)
+            const canPayForClose = userBalance >= closeEstimate
 
-          // Determine closeability and warning message
-          let isCloseable = true
-          let closeWarning = ''
+            // Determine closeability and warning message
+            let isCloseable = true
+            let closeWarning = ''
 
-          if (parsedInfo.tokenAmount.amount > 0) {
-            // Check if token is worth keeping
-            const isWorthless = await isTokenWorthless(connection, mint)
-            if (!isWorthless) {
-              closeWarning = 'Warning: Account has non-zero balance'
+            if (parsedInfo.tokenAmount.amount > 0) {
+              // Check if token is worth keeping
+              const isWorthless = await isTokenWorthless(connection, mint)
+              if (!isWorthless) {
+                closeWarning = 'Warning: Account has non-zero balance'
+              }
+            } else if (!canPayForClose) {
+              isCloseable = false
+              closeWarning = 'Cannot close: Insufficient SOL for transaction fee'
+            } else if (parsedInfo.state === 'frozen') {
+              isCloseable = false
+              closeWarning = 'Cannot close: Account is frozen'
             }
-          } else if (!canPayForClose) {
-            isCloseable = false
-            closeWarning = 'Cannot close: Insufficient SOL for transaction fee'
-          } else if (parsedInfo.state === 'frozen') {
-            isCloseable = false
-            closeWarning = 'Cannot close: Account is frozen'
-          }
 
-          // Add warning tags but don't prevent closing
-          const hasFreezingAuthority = !!mintInfo.freezeAuthority
-          const isMintable = !!mintInfo.mintAuthority
+            // Add warning tags but don't prevent closing
+            const hasFreezingAuthority = !!mintInfo.freezeAuthority
+            const isMintable = !!mintInfo.mintAuthority
 
-          const ata = await getAssociatedTokenAddress(
-            mint,
-            publicKey,
-            false,
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
-          )
+            const ata = await getAssociatedTokenAddress(
+              mint,
+              publicKey,
+              false,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            )
 
-          return {
-            pubkey: account.pubkey,
-            mint: parsedInfo.mint,
-            balance: parsedInfo.tokenAmount.uiAmount,
-            isAssociated: account.pubkey.equals(ata),
-            type: 'token' as const,
-            programId: TOKEN_PROGRAM_ID,
-            rentExemption: RENT_EXEMPTION,
-            isFrozen: parsedInfo.state === 'frozen',
-            isMintable: isMintable,
-            hasFreezingAuthority: hasFreezingAuthority,
-            estimatedCloseCost: await estimatedCloseCost(connection),
-            isCloseable,
-            closeWarning
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          logger.error('Error scanning token accounts', {
-            error: {
-              message: errorMessage,
-              stack: error instanceof Error ? error.stack : undefined
-            },
-            details: {
-              publicKey: publicKey.toString(),
-              operation: 'scanTokenAccounts',
-              programId: TOKEN_PROGRAM_ID.toString()
+            return {
+              pubkey: account.pubkey,
+              mint: parsedInfo.mint,
+              balance: parsedInfo.tokenAmount.uiAmount,
+              isAssociated: account.pubkey.equals(ata),
+              type: 'token' as const,
+              programId: TOKEN_PROGRAM_ID,
+              rentExemption: RENT_EXEMPTION,
+              isFrozen: parsedInfo.state === 'frozen',
+              isMintable: isMintable,
+              hasFreezingAuthority: hasFreezingAuthority,
+              estimatedCloseCost: await estimatedCloseCost(connection),
+              isCloseable,
+              closeWarning
             }
-          });
-          return [];
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            logger.error('Error scanning token accounts', {
+              error: {
+                message: errorMessage,
+                stack: error instanceof Error ? error.stack : undefined
+              },
+              details: {
+                publicKey: publicKey.toString(),
+                operation: 'scanTokenAccounts',
+                programId: TOKEN_PROGRAM_ID.toString()
+              }
+            });
+            return [];
+          }
+        })
+      )
+      return results
+        .filter((result): result is PromiseFulfilledResult<{
+          pubkey: PublicKey;
+          mint: any;
+          balance: any;
+          isAssociated: boolean;
+          type: "token";
+          programId: PublicKey;
+          rentExemption: number;
+          isFrozen: boolean;
+          isMintable: boolean;
+          hasFreezingAuthority: boolean;
+          estimatedCloseCost: number;
+          isCloseable: boolean;
+          closeWarning: string;
+        }> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value)
+    } catch (error) {
+      logger.error('Error scanning token accounts', {
+        error,
+        details: {
+          publicKey: publicKey.toString(),
+          operation: 'scanTokenAccounts'
         }
-      })
-    )
-    return results
-      .filter((result): result is PromiseFulfilledResult<{
-        pubkey: PublicKey;
-        mint: any;
-        balance: any;
-        isAssociated: boolean;
-        type: "token";
-        programId: PublicKey;
-        rentExemption: number;
-        isFrozen: boolean;
-        isMintable: boolean;
-        hasFreezingAuthority: boolean;
-        estimatedCloseCost: number;
-        isCloseable: boolean;
-        closeWarning: string;
-      }> => result.status === 'fulfilled' && result.value !== null)
-      .map(result => result.value)
-  } catch (error) {
-    logger.error('Error scanning token accounts', {
-      error,
-      details: {
-        publicKey: publicKey.toString(),
-        operation: 'scanTokenAccounts'
-      }
-    });
-    return []
-  }
+      });
+      return []
+    }
+  });
 }
 
 async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {

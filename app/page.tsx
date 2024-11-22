@@ -27,6 +27,7 @@ import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 import { getConnection } from './utils/rpc'
 import { createCloseAccountInstruction } from "@solana/spl-token"
+import { closeTokenAccount } from './utils/transactions'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -44,7 +45,6 @@ interface TokenAccount {
 }
 
 // Treasury wallet for collecting platform fees
-const TREASURY_WALLET = new PublicKey("8QAUgSFQxMcuYCn3yDN28HuqBsbXq2Ac1rADo5AWh8S5")
 const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
 const RENT_EXEMPTION = 0.00203928
 const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
@@ -252,40 +252,18 @@ export default function Component() {
           account: account.pubkey.toString()
         });
 
-        // Create the transaction
-        const transaction = new Transaction();
-        
-        // Add close instruction
-        const closeInstruction = createCloseAccountInstruction(
+        // Use our optimized closeTokenAccount function
+        const result = await closeTokenAccount(
+          connection,
+          publicKey,
           account.pubkey,
-          publicKey,
-          publicKey,
-          []
+          sendTransaction
         );
-        
-        transaction.add(closeInstruction);
 
-        // Get latest blockhash
-        const { blockhash } = await connection.getLatestBlockhash('confirmed');
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = publicKey;
-
-        try {
-          // Send transaction and wait for confirmation
-          const signature = await sendTransaction(transaction, connection);
-          await connection.confirmTransaction(signature, 'confirmed');
-          
-          closedCount++;
-          totalRentReclaimed += RENT_AFTER_FEE;
-          
-          toast({
-            title: "Account Closed",
-            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
-          });
-        } catch (error) {
+        if (result.error) {
           failedCount++;
           logger.error('Failed to close account', {
-            error,
+            error: result.error,
             details: {
               account: account.pubkey.toString(),
               type: account.type,
@@ -295,8 +273,16 @@ export default function Component() {
           
           toast({
             title: "Failed to Close Account",
-            description: error instanceof Error ? error.message : "Transaction failed",
+            description: result.error,
             variant: "destructive",
+          });
+        } else {
+          closedCount++;
+          totalRentReclaimed += RENT_AFTER_FEE;
+          
+          toast({
+            title: "Account Closed",
+            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
           });
         }
 
@@ -321,7 +307,7 @@ export default function Component() {
     
     // Update UI with results
     toast({
-      title: "Closure Complete",
+      title: "Closure Complete", 
       description: `Closed ${closedCount} accounts, reclaimed ${totalRentReclaimed.toFixed(4)} SOL`,
       variant: closedCount > 0 ? "default" : "destructive",
     });
@@ -330,7 +316,7 @@ export default function Component() {
     if (closedCount > 0) {
       await scanAccounts();
     }
-  };
+  }
 
   // Add this after the useState hooks
   const filteredAccounts = accounts.filter(account => {
