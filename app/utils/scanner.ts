@@ -1,4 +1,4 @@
-import { Connection, PublicKey, AccountInfo as SolanaAccountInfo } from "@solana/web3.js"
+import { Connection, PublicKey, AccountInfo as SolanaAccountInfo, Transaction } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
