@@ -369,22 +369,24 @@ export default function Component() {
           </div>
         </nav>
 
-        <main className="flex-grow container mx-auto px-4 pt-20 text-center flex flex-col justify-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            {/* Black Hole Animation */}
-            <BlackHole
-              scanning={loading}
-              results={accounts.length > 0 ? {
-                totalAccounts: accounts.length,
-                potentialSOL: accounts.length * RENT_AFTER_FEE,
-                riskLevel: accounts.some(a => !a.isAssociated) ? 'medium' : 'low'
-              } : null}
-              isWalletConnected={!!publicKey}
-            />
+        <main className="container mx-auto px-4 pt-20 pb-32">
+          <div className="min-h-screen">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              {/* Black Hole Animation */}
+              <BlackHole
+                scanning={loading}
+                results={accounts.length > 0 ? {
+                  totalAccounts: accounts.length,
+                  potentialSOL: accounts.length * RENT_AFTER_FEE,
+                  riskLevel: accounts.some(a => !a.isAssociated) ? 'medium' : 'low'
+                } : null}
+                isWalletConnected={!!publicKey}
+              />
+            </motion.div>
 
             {/* Scam Protection Message */}
             {publicKey && (
@@ -539,7 +541,7 @@ export default function Component() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20"
                     >
                       {paginatedAccounts.map((account) => (
                         <Card
@@ -621,45 +623,47 @@ export default function Component() {
 
                 {/* Update pagination visibility condition */}
                 {filteredAccounts.length > ITEMS_PER_PAGE && (
-                  <div className="mt-8 mb-12 sticky bottom-0 bg-black/50 backdrop-blur-sm p-4">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setCurrentPage(p => Math.max(1, p - 1))
-                            }}
-                            className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
-                          />
-                        </PaginationItem>
-                        {Array.from({length: totalPages}, (_, i) => (
-                          <PaginationItem key={i}>
-                            <PaginationLink
+                  <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm p-4">
+                    <div className="container mx-auto">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault()
-                                setCurrentPage(i + 1)
+                                setCurrentPage(p => Math.max(1, p - 1))
                               }}
-                              isActive={currentPage === i + 1}
-                            >
-                              {i + 1}
-                            </PaginationLink>
+                              className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
+                            />
                           </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setCurrentPage(p => Math.min(totalPages, p + 1))
-                            }}
-                            className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                          {Array.from({length: totalPages}, (_, i) => (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setCurrentPage(i + 1)
+                                }}
+                                isActive={currentPage === i + 1}
+                              >
+                                {i + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(p => Math.min(totalPages, p + 1))
+                              }}
+                              className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
                   </div>
                 )}
               </div>
@@ -677,7 +681,7 @@ export default function Component() {
                 Connect your wallet to begin
               </motion.div>
             )}
-          </motion.div>
+          </div>
         </main>
 
         {/* Add footer */}
