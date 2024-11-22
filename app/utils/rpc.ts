@@ -4,34 +4,28 @@ import { logger } from './logger'
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://www.solanare.claims'
 
 export function getConnection(commitment: Commitment = 'processed') {
-  const rpcUrl = `${API_BASE_URL}/api/rpc`
-  
-  return new Connection(rpcUrl, {
-    commitment,
-    confirmTransactionInitialTimeout: 60000,
-    wsEndpoint: undefined,
-    fetch: async (url, options) => {
-      try {
+  return new Connection(
+    'https://mainnet.helius-rpc.com/?api-key=36f83a1d-2b11-4683-a989-09d628cb5b95',
+    {
+      commitment,
+      confirmTransactionInitialTimeout: 60000,
+      wsEndpoint: undefined,
+      fetch: async (url, options) => {
         const response = await fetch(url, {
-          method: 'POST',
+          ...options,
           headers: {
             'Content-Type': 'application/json',
-          },
-          body: options?.body,
-          credentials: 'include'
+          }
         })
         
-        if (!response.ok) {
-          throw new Error(`RPC request failed: ${response.statusText}`)
-        }
+        // Log connection type
+        const connectionType = response.headers.get('X-Helius-ConnectionType')
+        logger.info('Helius connection type', { connectionType })
         
         return response
-      } catch (error) {
-        logger.error('RPC request failed', { error })
-        throw error
       }
     }
-  })
+  )
 }
 
 export async function withFallback<T>(

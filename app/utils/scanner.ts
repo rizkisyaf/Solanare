@@ -1,4 +1,4 @@
-import { Connection, PublicKey, AccountInfo as SolanaAccountInfo, Transaction } from "@solana/web3.js"
+import { Connection, PublicKey, AccountInfo as SolanaAccountInfo, Transaction, Commitment } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
@@ -38,13 +38,42 @@ const KNOWN_PROGRAMS = {
 
 const RENT_EXEMPTION = 0.00203928
 
+// Constants for retry logic
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000
+const COMMITMENT: Commitment = 'processed'
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  program: string
+): Promise<T> {
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      return await operation()
+    } catch (error) {
+      if (i === MAX_RETRIES - 1) throw error
+      
+      logger.warn(`Failed to scan program ${program}, will retry`, {
+        error,
+        details: { program }
+      })
+      
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+    }
+  }
+  throw new Error('Max retries exceeded')
+}
+
 async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): Promise<AccountInfo[]> {
   return rateLimit(async () => {
     try {
-      const accounts = await connection.getParsedTokenAccountsByOwner(
-        publicKey, 
-        { programId: TOKEN_PROGRAM_ID },
-        'processed'
+      const accounts = await withRetry(
+        () => connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { programId: TOKEN_PROGRAM_ID },
+          COMMITMENT
+        ),
+        'TOKEN_PROGRAM'
       )
       
       const results = await Promise.allSettled(
