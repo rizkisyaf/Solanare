@@ -46,6 +46,11 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
       const results = await Promise.allSettled(
         accounts.value.map(async account => {
           try {
+            if (!account?.account?.data?.parsed?.info) {
+              logger.warn('Invalid account data structure', { account })
+              return null
+            }
+            
             const parsedInfo = account.account.data.parsed.info
             const mint = new PublicKey(parsedInfo.mint)
             const mintInfo = await getMint(connection, mint)
@@ -77,7 +82,6 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
                 return 5000 // fallback to default on error
               }
             }
-
             // Check if account has enough SOL to pay for closing
             const closeEstimate = await estimatedCloseCost(connection)
             const userBalance = await connection.getBalance(publicKey)
@@ -112,7 +116,6 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
               TOKEN_PROGRAM_ID,
               ASSOCIATED_TOKEN_PROGRAM_ID
             )
-
             return {
               pubkey: account.pubkey,
               mint: parsedInfo.mint,

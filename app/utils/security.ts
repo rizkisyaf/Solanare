@@ -1,4 +1,5 @@
 import { PublicKey, Connection } from "@solana/web3.js"
+import { logger } from "./logger"
 
 export interface SecurityCheck {
   isScam: boolean
@@ -11,20 +12,36 @@ export async function checkTransactionSecurity(
   walletAddress: PublicKey,
   transactionData: any
 ): Promise<SecurityCheck> {
-  // Integration with ScamSniffers API
-  const response = await fetch('https://lookup-api.scamsniffer.io/address/check', {
-    method: 'POST',
-    body: JSON.stringify({
-      wallet: walletAddress.toString(),
-      transaction: transactionData,
-      chain: 'solana'
+  try {
+    const response = await fetch('https://lookup-api.scamsniffer.io/address/check', {
+      method: 'POST',
+      body: JSON.stringify({
+        wallet: walletAddress.toString(),
+        transaction: transactionData,
+        chain: 'solana'
+      })
     })
-  })
 
-  const security = await response.json()
-  return {
-    isScam: security.isScam,
-    risk: security.riskLevel,
-    details: security.details
+    if (!response.ok) {
+      return {
+        isScam: false,
+        risk: 'low',
+        details: 'Security check unavailable'
+      }
+    }
+
+    const security = await response.json()
+    return {
+      isScam: security.isScam || false,
+      risk: security.riskLevel || 'low',
+      details: security.details || ''
+    }
+  } catch (error) {
+    logger.error('Security check failed', { error })
+    return {
+      isScam: false,
+      risk: 'low',
+      details: 'Security check failed'
+    }
   }
-} 
+}

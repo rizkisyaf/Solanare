@@ -1,18 +1,21 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-const RPC_ENDPOINT = 'https://mercedes-iuhmrd-fast-mainnet.helius-rpc.com';
-
-export function getConnection(commitment: Commitment = 'processed'): Connection {
-  return new Connection(RPC_ENDPOINT, {
+export function getConnection(commitment: Commitment = 'confirmed') {
+  const rpcUrl = '/api/rpc'
+  return new Connection(rpcUrl, {
     commitment,
-    confirmTransactionInitialTimeout: 60000,
-    wsEndpoint: RPC_ENDPOINT.replace('https://', 'wss://'),
-    httpHeaders: {
-      'Origin': 'https://www.solanare.claims',
-      'Content-Type': 'application/json',
+    fetch: async (url, options) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: options?.body
+      })
+      return response
     }
-  });
+  })
 }
 
 export async function withFallback<T>(
@@ -33,7 +36,7 @@ export async function withFallback<T>(
 }
 
 export async function getPriorityFee(encodedTransaction: string): Promise<number> {
-  const response = await fetch(RPC_ENDPOINT, {
+  const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
