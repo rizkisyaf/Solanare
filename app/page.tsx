@@ -4,11 +4,10 @@ import dynamic from 'next/dynamic'
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
-import { PublicKey } from "@solana/web3.js"
+import { PublicKey, Transaction } from "@solana/web3.js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import { closeTokenAccount } from "./utils/transactions"
 import { logger } from "./utils/logger"
 import '@solana/wallet-adapter-react-ui/styles.css'
 import { BlackHole } from '@/components/BlackHole'
@@ -26,7 +25,8 @@ import {
 } from "@/components/ui/pagination"
 import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
-import { Connection } from "@solana/web3.js"
+import { getConnection } from './utils/rpc'
+import { createCloseAccountInstruction } from "@solana/spl-token"
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -35,12 +35,12 @@ interface TokenAccount {
   isAssociated: boolean
   type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
   programId: PublicKey
-  rentExemption?: number
+  rentExemption: number  // Make this required
   isCloseable: boolean
-  closeWarning: string
-  isMintable: boolean
-  hasFreezingAuthority: boolean
-  isFrozen: boolean
+  closeWarning: string  // Make this required
+  isMintable?: boolean  // Optional
+  hasFreezingAuthority?: boolean  // Optional
+  isFrozen?: boolean  // Optional
 }
 
 // Treasury wallet for collecting platform fees
@@ -155,162 +155,182 @@ export default function Component() {
     try {
       logger.info('Starting account scan', { publicKey: publicKey.toString() })
 
-      // Try different RPC endpoints if the primary one fails
-      const endpoints = [
-        connection.rpcEndpoint,
-        'https://rpc.shyft.to?api_key=GXtK2hRLup638NN_',
-        'https://solana-mainnet.g.alchemy.com/v2/C191ERIvh8Hz0SAcEpq2_F3jr4wbMbHR'
-      ]
+      const scanResults = await scanAllAccounts(getConnection(), publicKey)
 
-      let scanResults
-      let endpointIndex = 0
-      let success = false
+      if (scanResults) {
+        const securityCheck = await checkTransactionSecurity(
+          connection,
+          publicKey,
+          { accounts: scanResults }
+        )
 
-      while (!success && endpointIndex < endpoints.length) {
-        try {
-          const currentConnection = new Connection(endpoints[endpointIndex])
-          scanResults = await scanAllAccounts(currentConnection, publicKey)
-          success = true
-        } catch (error) {
-          logger.error(`Error with endpoint ${endpoints[endpointIndex]}:`, error)
-          endpointIndex++
-          if (endpointIndex === endpoints.length) {
-            throw new Error('All RPC endpoints failed')
-          }
+        setSecurityCheck(securityCheck)
+
+        if (securityCheck.isScam) {
+          throw new Error(`Security Risk Detected: ${securityCheck.details}`)
         }
+
+        const allAccounts = [
+          ...scanResults.tokenAccounts,
+          ...scanResults.openOrders,
+          ...scanResults.undeployedTokens,
+          ...scanResults.unknownAccounts
+        ].map(account => ({
+          pubkey: account.pubkey,
+          mint: account.mint || 'unknown',
+          balance: account.balance,
+          isAssociated: account.isAssociated,
+          type: account.type,
+          programId: account.programId,
+          rentExemption: account.rentExemption || RENT_EXEMPTION,
+          isCloseable: account.isCloseable,
+          closeWarning: account.closeWarning || '',  // Provide default empty string
+          isMintable: account.isMintable || false,
+          hasFreezingAuthority: account.hasFreezingAuthority || false,
+          isFrozen: account.isFrozen || false
+        })) as TokenAccount[]
+
+        setAccounts(allAccounts)
+        toast({
+          title: "Scan Complete",
+          description: `Found ${allAccounts.length} accounts with ${scanResults.potentialSOL.toFixed(8)} SOL potential reclaim`,
+        })
       }
-
-      if (!scanResults) {
-        throw new Error('Failed to scan accounts')
-      }
-
-      const securityCheck = await checkTransactionSecurity(
-        connection,
-        publicKey,
-        { accounts: scanResults }
-      )
-
-      setSecurityCheck(securityCheck)
-
-      if (securityCheck.isScam) {
-        throw new Error(`Security Risk Detected: ${securityCheck.details}`)
-      }
-
-      // Convert and filter accounts to match TokenAccount interface
-      const allAccounts = [
-        ...scanResults.tokenAccounts,
-        ...scanResults.openOrders,
-        ...scanResults.undeployedTokens,
-        ...scanResults.unknownAccounts
-      ].map(account => ({
-        pubkey: account.pubkey,
-        mint: account.mint || 'unknown',
-        balance: account.balance,
-        isAssociated: account.isAssociated,
-        type: account.type,
-        programId: account.programId,
-        rentExemption: account.rentExemption
-      })) as TokenAccount[]
-
-      setAccounts(allAccounts)
-      toast({
-        title: "Scan Complete",
-        description: `Found ${allAccounts.length} accounts with ${scanResults.potentialSOL.toFixed(8)} SOL potential reclaim`,
-      })
 
     } catch (error) {
-      logger.error("Error scanning accounts:", error)
+      logger.error('Error scanning accounts', {
+        error,
+        details: {
+          walletAddress: publicKey?.toString(),
+          operation: 'scanAccounts'
+        }
+      });
       toast({
         title: "Error scanning accounts",
         description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
-      })
+      });
     } finally {
       setLoading(false)
     }
   }
 
   const closeAccounts = async () => {
-    if (!publicKey || accounts.length === 0) return
+    if (!publicKey || !sendTransaction || accounts.length === 0) {
+      toast({
+        title: "Error",
+        description: "Wallet not connected or no accounts to close",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const closeableAccounts = accounts.filter(account => account.isCloseable)
+    setClosing(true);
+    logger.info('Starting account closure', {
+      accountCount: accounts.length,
+      publicKey: publicKey.toString()
+    });
+
+    const closeableAccounts = accounts.filter(account => account.isCloseable);
     if (closeableAccounts.length === 0) {
       toast({
         title: "No Closeable Accounts",
         description: "None of the selected accounts can be closed at this time.",
         variant: "destructive",
-      })
-      return
+      });
+      setClosing(false);
+      return;
     }
 
-    setClosing(true)
-    logger.info('Starting account closure', {
-      accountCount: closeableAccounts.length,
-      publicKey: publicKey.toString()
-    })
-
-    let closedCount = 0
-    let totalRentReclaimed = 0
-    const failedAccounts: string[] = []
+    let closedCount = 0;
+    let failedCount = 0;
+    let totalRentReclaimed = 0;
 
     for (const account of closeableAccounts) {
-      logger.info('Attempting to close account', {
-        account: account.pubkey.toString()
-      })
-
-      const result = await closeTokenAccount(
-        connection,
-        publicKey,
-        account.pubkey,
-        TREASURY_WALLET,
-        PLATFORM_FEE_PERCENTAGE,
-        sendTransaction
-      )
-
-      if (result.signature && !result.error) {
-        closedCount++
-        totalRentReclaimed += RENT_AFTER_FEE
-        logger.info('Account closed successfully', {
-          signature: result.signature,
+      try {
+        logger.info('Attempting to close account', {
           account: account.pubkey.toString()
-        })
-      } else {
-        failedAccounts.push(account.pubkey.toString())
-        logger.error('Failed to close account', {
-          account: account.pubkey.toString(),
-          error: result.error
-        })
-        toast({
-          title: "Failed to close account",
-          description: `Error: ${result.error}`,
-          variant: "destructive",
-        })
+        });
+
+        // Create the transaction
+        const transaction = new Transaction();
+        
+        // Add close instruction
+        const closeInstruction = createCloseAccountInstruction(
+          account.pubkey,
+          publicKey,
+          publicKey,
+          []
+        );
+        
+        transaction.add(closeInstruction);
+
+        // Get latest blockhash
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = publicKey;
+
+        try {
+          // Send transaction and wait for confirmation
+          const signature = await sendTransaction(transaction, connection);
+          await connection.confirmTransaction(signature, 'confirmed');
+          
+          closedCount++;
+          totalRentReclaimed += RENT_AFTER_FEE;
+          
+          toast({
+            title: "Account Closed",
+            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
+          });
+        } catch (error) {
+          failedCount++;
+          logger.error('Failed to close account', {
+            error,
+            details: {
+              account: account.pubkey.toString(),
+              type: account.type,
+              mint: account.mint
+            }
+          });
+          
+          toast({
+            title: "Failed to Close Account",
+            description: error instanceof Error ? error.message : "Transaction failed",
+            variant: "destructive",
+          });
+        }
+
+        // Add delay between transactions
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        failedCount++;
+        logger.error('Error closing account:', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          tokenAccount: account.pubkey.toString()
+        });
       }
     }
 
-    // Remove only successfully closed accounts
-    setAccounts(prevAccounts =>
-      prevAccounts.filter(account =>
-        !failedAccounts.includes(account.pubkey.toString())
-      )
-    )
-
-    setClosing(false)
-
     logger.info('Account closure complete', {
       closedCount,
-      failedCount: failedAccounts.length,
+      failedCount,
       totalRentReclaimed
-    })
+    });
 
+    setClosing(false);
+    
+    // Update UI with results
+    toast({
+      title: "Closure Complete",
+      description: `Closed ${closedCount} accounts, reclaimed ${totalRentReclaimed.toFixed(4)} SOL`,
+      variant: closedCount > 0 ? "default" : "destructive",
+    });
+
+    // Refresh account list if any accounts were closed
     if (closedCount > 0) {
-      toast({
-        title: "Accounts Closed",
-        description: `Successfully closed ${closedCount} accounts and reclaimed ${totalRentReclaimed.toFixed(8)} SOL (after 5% platform fee)${failedAccounts.length > 0 ? `\n${failedAccounts.length} accounts failed to close.` : ''
-          }`,
-      })
+      await scanAccounts();
     }
-  }
+  };
 
   // Add this after the useState hooks
   const filteredAccounts = accounts.filter(account => {
@@ -545,67 +565,77 @@ export default function Component() {
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
                     >
                       {currentAccounts.map((account) => (
-                        <Card
-                          key={account.pubkey.toString()}
-                          className={`${account.type === 'token' ? 'bg-purple-900/30 border-purple-500/30' :
-                            account.type === 'openOrder' ? 'bg-blue-900/30 border-blue-500/30' :
-                              account.type === 'undeployed' ? 'bg-green-900/30 border-green-500/30' :
-                                'bg-red-900/30 border-red-500/30'
-                            }`}
+                        <Card 
+                          key={account.pubkey.toString()} 
+                          className="relative overflow-hidden bg-black/30 border border-purple-500/20 hover:border-purple-500/40 transition-all"
                         >
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <span className={`text-xs px-2 py-1 rounded-full ${account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
+                          <CardContent className="p-6">
+                            {/* Header with Type and Rent */}
+                            <div className="flex justify-between items-start mb-4">
+                              <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                                account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
                                 account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
-                                  account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
-                                    'bg-red-500/20 text-red-300'
-                                }`}>
+                                account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
+                                'bg-red-500/20 text-red-300'
+                              }`}>
                                 {account.type}
                               </span>
-                              <span className="text-sm text-purple-300/70">
-                                {RENT_AFTER_FEE.toFixed(8)} SOL
-                              </span>
+                              <div className="text-right">
+                                <span className="text-sm text-purple-300/70">Rent</span>
+                                <p className="text-sm font-medium text-purple-300">{RENT_AFTER_FEE.toFixed(8)} SOL</p>
+                              </div>
                             </div>
 
+                            {/* Status Tags */}
                             {(account.isMintable || account.hasFreezingAuthority || account.isFrozen || !account.isCloseable) && (
-                              <div className="flex flex-wrap gap-2 mb-2">
+                              <div className="flex flex-wrap gap-2 mb-4">
                                 {account.isMintable && (
-                                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
+                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
                                     Mintable
                                   </span>
                                 )}
                                 {account.hasFreezingAuthority && (
-                                  <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-300">
+                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-500/20 text-blue-300">
                                     Freezable
                                   </span>
                                 )}
                                 {account.isFrozen && (
-                                  <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-300">
+                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300">
                                     Frozen
                                   </span>
                                 )}
                                 {!account.isCloseable && (
-                                  <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-300" title={account.closeWarning}>
+                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300" 
+                                    title={account.closeWarning}>
                                     Not Closeable
                                   </span>
                                 )}
                               </div>
                             )}
 
-                            <p className="text-purple-300 text-sm truncate font-mono">
-                              {account.pubkey.toString()}
-                            </p>
-                            <p className="text-purple-400 text-sm">
-                              Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}
-                            </p>
-                            <div className="mt-2 pt-2 border-t border-purple-500/20 flex justify-between items-center">
-                              <span className="text-sm text-purple-300/70">
-                                Balance: {account.balance}
-                              </span>
-                              <span className={`text-xs px-2 py-1 rounded-full ${account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
+                            {/* Account Details */}
+                            <div className="space-y-2">
+                              <p className="text-purple-300 text-sm truncate font-mono bg-purple-500/10 px-3 py-2 rounded">
+                                {account.pubkey.toString()}
+                              </p>
+                              <div className="flex justify-between items-center">
+                                <p className="text-purple-400 text-sm">
+                                  Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}
+                                </p>
+                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                                  account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
                                 }`}>
-                                {account.isAssociated ? 'Associated' : 'Non-Associated'}
-                              </span>
+                                  {account.isAssociated ? 'Associated' : 'Non-Associated'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Balance Footer */}
+                            <div className="mt-4 pt-4 border-t border-purple-500/20">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-purple-300/70">Balance</span>
+                                <span className="text-sm font-medium text-purple-300">{account.balance}</span>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -626,16 +656,19 @@ export default function Component() {
                             aria-disabled={currentPage === 1}
                           />
                         </PaginationItem>
-                        {[...Array(totalPages)].map((_, i) => (
-                          <PaginationItem key={i}>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(i + 1)}
-                              isActive={currentPage === i + 1}
-                            >
-                              {i + 1}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
+                        {[...Array(totalPages)].map((_, i) => {
+                          const pageNumber = i + 1;
+                          return (
+                            <PaginationItem key={`page-${pageNumber}`}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(pageNumber)}
+                                isActive={currentPage === pageNumber}
+                              >
+                                {pageNumber}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
                         <PaginationItem>
                           <PaginationNext
                             href="#"

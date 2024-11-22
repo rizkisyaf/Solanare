@@ -1,5 +1,5 @@
 import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
-import { createCloseAccountInstruction } from "@solana/spl-token"
+import { createCloseAccountInstruction, createBurnInstruction } from "@solana/spl-token"
 import { logger } from "./logger"
 
 interface TransactionResult {
@@ -29,59 +29,50 @@ export async function closeTokenAccount(
   sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>
 ): Promise<TransactionResult> {
   try {
-    const RENT_EXEMPTION = 0.00203928
-    const feeAmount = RENT_EXEMPTION * feePercentage
-    const userAmount = RENT_EXEMPTION - feeAmount
-
     const transaction = new Transaction()
     
-    // Create instructions for fee and user
-    const feeInstruction = createCloseAccountInstruction(
+    // Get account info to check balance
+    const accountInfo = await connection.getParsedAccountInfo(tokenAccount)
+    if (!accountInfo.value) throw new Error('Account not found')
+    
+    const parsedInfo = (accountInfo.value.data as any).parsed.info
+    const mint = new PublicKey(parsedInfo.mint)
+    const balance = parsedInfo.tokenAmount.amount
+
+    // If balance > 0, add burn instruction before closing
+    if (balance > 0) {
+      const burnInstruction = createBurnInstruction(
+        tokenAccount,
+        mint,
+        publicKey,
+        balance,
+        []
+      )
+      transaction.add(burnInstruction)
+    }
+
+    // Only add one close instruction - we can't close the same account twice
+    const closeInstruction = createCloseAccountInstruction(
       tokenAccount,
-      treasuryWallet,
+      publicKey, // Send rent back to the user
       publicKey,
       []
     )
 
-    const userInstruction = createCloseAccountInstruction(
-      tokenAccount,
-      publicKey,
-      publicKey,
-      []
-    )
-
-    transaction.add(feeInstruction).add(userInstruction)
+    transaction.add(closeInstruction)
 
     const { blockhash } = await connection.getLatestBlockhash()
     transaction.recentBlockhash = blockhash
     transaction.feePayer = publicKey
 
-    // Improved simulation error handling
+    // Send and confirm transaction
     try {
-      const simulation = await connection.simulateTransaction(transaction)
-      
-      if (simulation.value.err) {
-        const errorLogs = simulation.value.logs?.join('\n') || 'No error logs available'
-        logger.error('Transaction simulation failed:', {
-          error: simulation.value.err,
-          logs: errorLogs
-        })
-        throw new Error(`Transaction simulation failed: ${errorLogs}`)
-      }
-    } catch (simError) {
-      throw new Error(`Simulation error: ${simError instanceof Error ? simError.message : 'Unknown simulation error'}`)
+      const signature = await sendTransaction(transaction, connection)
+      await connection.confirmTransaction(signature, 'confirmed')
+      return { signature }
+    } catch (error) {
+      throw new Error(`Failed to send transaction: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-
-    const signature = await sendTransaction(transaction, connection)
-    await confirmTransaction(connection, signature)
-
-    logger.info(`Token account closed successfully`, {
-      signature,
-      tokenAccount: tokenAccount.toString()
-    })
-
-    return { signature }
-
   } catch (error) {
     logger.error('Error closing token account:', {
       error: error instanceof Error ? error.message : 'Unknown error',

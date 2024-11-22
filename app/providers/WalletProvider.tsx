@@ -6,6 +6,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets'
 import { useMemo } from 'react'
 import '@solana/wallet-adapter-react-ui/styles.css'
+import { RPC_ENDPOINTS } from '../utils/rpc'
 
 export function ClientWalletProvider({
   children,
@@ -13,15 +14,11 @@ export function ClientWalletProvider({
   children: React.ReactNode
 }) {
   const network = WalletAdapterNetwork.Mainnet
-  const endpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT
+  const endpoint = RPC_ENDPOINTS[0]
 
   const wallets = useMemo(() => [
     new PhantomWalletAdapter({ network })
   ], [network])
-
-  if (!endpoint) {
-    throw new Error('RPC endpoint not configured')
-  }
 
   return (
     <ConnectionProvider endpoint={endpoint}>
