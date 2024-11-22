@@ -369,8 +369,8 @@ export default function Component() {
           </div>
         </nav>
 
-        <main className="container mx-auto px-4 pt-20 pb-32">
-          <div className="min-h-screen">
+        <main className="container mx-auto px-4 pt-20 pb-32 text-center">
+          <div className="min-h-screen flex flex-col justify-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
