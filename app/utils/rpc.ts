@@ -1,23 +1,33 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_VERCEL_URL 
-  ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-  : 'http://localhost:3000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://www.solanare.claims'
 
 export function getConnection(commitment: Commitment = 'confirmed') {
   const rpcUrl = `${API_BASE_URL}/api/rpc`
+  
   return new Connection(rpcUrl, {
     commitment,
     fetch: async (url, options) => {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: options?.body
-      })
-      return response
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: options?.body,
+          credentials: 'include'
+        })
+        
+        if (!response.ok) {
+          throw new Error(`RPC request failed: ${response.statusText}`)
+        }
+        
+        return response
+      } catch (error) {
+        logger.error('RPC request failed', { error })
+        throw error
+      }
     }
   })
 }
