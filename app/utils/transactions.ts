@@ -20,8 +20,8 @@ export async function closeTokenAccount(
   try {
     const { blockhash } = await connection.getLatestBlockhash('confirmed')
     
-    // Calculate fee amount
-    const feeAmount = RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL;
+    // Calculate fee amount (ensure integer value for lamports)
+    const feeAmount = Math.floor(RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL);
     
     // Create close account instruction
     const closeInstruction = createCloseAccountInstruction(
