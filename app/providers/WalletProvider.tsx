@@ -3,7 +3,7 @@
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets'
+import { PhantomWalletAdapter, SolflareWalletAdapter, AlphaWalletAdapter } from '@solana/wallet-adapter-wallets'
 import { useMemo } from 'react'
 import '@solana/wallet-adapter-react-ui/styles.css'
 import { getConnection } from '../utils/rpc'
@@ -17,7 +17,9 @@ export function ClientWalletProvider({
   const connection = getConnection('confirmed')
 
   const wallets = useMemo(() => [
-    new PhantomWalletAdapter({ network })
+    new PhantomWalletAdapter({ network }),
+    new SolflareWalletAdapter({ network }),
+    new AlphaWalletAdapter({ network })
   ], [network])
 
   return (

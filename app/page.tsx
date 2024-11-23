@@ -219,38 +219,22 @@ export default function Component() {
   }
 
   const closeAccounts = async () => {
-    if (!publicKey || !sendTransaction || accounts.length === 0) {
-      toast({
-        title: "Error",
-        description: "Wallet not connected or no accounts to close",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!publicKey || !sendTransaction) return;
+    
     setClosing(true);
+    let closedCount = 0;
+    let failedCount = 0;
+    let totalRentReclaimed = 0;
 
     try {
-      const closeableAccounts = accounts.filter(account => account.isCloseable);
-      if (closeableAccounts.length === 0) {
-        toast({
-          title: "No Closeable Accounts",
-          description: "None of the selected accounts can be closed at this time.",
-          variant: "destructive",
+      for (const account of accounts) {
+        if (!account.isCloseable) continue;
+
+        logger.info('Attempting to close account', {
+          account: account.pubkey.toString()
         });
-        return;
-      }
 
-      let closedCount = 0;
-      let failedCount = 0;
-      let totalRentReclaimed = 0;
-
-      for (const account of closeableAccounts) {
         try {
-          logger.info('Attempting to close account', {
-            account: account.pubkey.toString()
-          });
-
           const result = await closeTokenAccount(
             connection,
             publicKey,
@@ -260,22 +244,15 @@ export default function Component() {
 
           if (result.error) {
             failedCount++;
-            toast({
-              title: "Failed to Close Account",
-              description: result.error,
-              variant: "destructive",
-            });
-          } else {
-            closedCount++;
-            totalRentReclaimed += RENT_AFTER_FEE;
-            toast({
-              title: "Account Closed",
-              description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
-            });
+            continue;
           }
 
-          // Add delay between transactions
-          await new Promise(resolve => setTimeout(resolve, 500));
+          closedCount++;
+          totalRentReclaimed += RENT_AFTER_FEE;
+          
+          // Remove closed account from state
+          setAccounts(prev => prev.filter(a => !a.pubkey.equals(account.pubkey)));
+
         } catch (error) {
           failedCount++;
           logger.error('Error closing account:', {
@@ -284,13 +261,6 @@ export default function Component() {
           });
         }
       }
-
-      logger.info('Account closure complete', {
-        closedCount,
-        failedCount,
-        totalRentReclaimed
-      });
-
     } catch (error) {
       logger.error('Account closure failed', { error });
       toast({
@@ -637,7 +607,7 @@ export default function Component() {
                               className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
                             />
                           </PaginationItem>
-                          {Array.from({length: totalPages}, (_, i) => (
+                          {Array.from({ length: Math.ceil(accounts.length / ITEMS_PER_PAGE) }, (_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
                                 href="#"
@@ -656,9 +626,9 @@ export default function Component() {
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault()
-                                setCurrentPage(p => Math.min(totalPages, p + 1))
+                                setCurrentPage(p => Math.min(Math.ceil(accounts.length / ITEMS_PER_PAGE), p + 1))
                               }}
-                              className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
+                              className={currentPage === Math.ceil(accounts.length / ITEMS_PER_PAGE) ? 'opacity-50 cursor-not-allowed' : ''}
                             />
                           </PaginationItem>
                         </PaginationContent>
