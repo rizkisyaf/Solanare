@@ -26,9 +26,7 @@ import {
 import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 import { getConnection } from './utils/rpc'
-import { createCloseAccountInstruction } from "@solana/spl-token"
 import { closeTokenAccount } from './utils/transactions'
-import { ReviewModal } from '../components/ReviewModal'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -708,7 +706,6 @@ export default function Component() {
         isScanning={loading}
         securityCheck={securityCheck}
       />
-      <ReviewModal />
     </div>
   )
 }
