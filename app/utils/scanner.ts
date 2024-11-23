@@ -4,7 +4,7 @@ import { logger } from "./logger"
 import { withFallback } from "./rpc"
 import { rateLimit } from "./rateLimit"
 import { createCloseAccountMessage } from "./transactions"
-import { PLATFORM_FEE_PERCENTAGE } from "./constants"
+import { MIN_VIABLE_RECLAIM, PLATFORM_FEE_PERCENTAGE, RENT_AFTER_FEE } from "./constants"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -93,19 +93,25 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
               const closeEstimate = await estimatedCloseCost(connection, publicKey, account.pubkey)
               const userBalance = await connection.getBalance(publicKey, 'processed')
 
-              // Calculate total cost: transaction fee + platform fee
+              // Calculate total cost and potential reclaim
               const platformFee = Math.floor(RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL)
               const totalCost = closeEstimate + platformFee
+              const potentialReclaim = RENT_AFTER_FEE
 
-              // User can close if their current balance can cover the costs
+              // Check if reclaim amount is worth it
+              const isWorthReclaiming = potentialReclaim >= MIN_VIABLE_RECLAIM
+
+              // User can close if their current balance can cover costs and reclaim is worth it
               const canPayForClose = userBalance >= totalCost
+              const closeWarning = !isWorthReclaiming
+                ? `Reclaim amount (${potentialReclaim.toFixed(4)} SOL) is below minimum viable amount (${MIN_VIABLE_RECLAIM} SOL)`
+                : ''
 
-              // Rest of the account processing logic
               return {
                 pubkey: account.pubkey,
                 mint: parsedInfo.mint,
                 balance: parsedInfo.tokenAmount.uiAmount || 0,
-                isAssociated: false, // Will be set later
+                isAssociated: false,
                 type: 'token',
                 programId: TOKEN_PROGRAM_ID,
                 rentExemption: RENT_EXEMPTION,
@@ -113,8 +119,8 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
                 isMintable: !!mintInfo.mintAuthority,
                 hasFreezingAuthority: !!mintInfo.freezeAuthority,
                 estimatedCloseCost: closeEstimate,
-                isCloseable: canPayForClose && parsedInfo.tokenAmount.amount === '0',
-                closeWarning: ''
+                isCloseable: canPayForClose && parsedInfo.tokenAmount.amount === '0' && isWorthReclaiming,
+                closeWarning
               }
             } catch (error) {
               logger.error('Error processing token account', { error, account: account.pubkey.toString() })
@@ -150,7 +156,7 @@ async function estimatedCloseCost(
     const transaction = await createCloseAccountMessage(connection, wallet, accountToClose)
     transaction.recentBlockhash = blockhash
     transaction.feePayer = wallet
-    
+
     const message = transaction.compileMessage()
     const response = await connection.getFeeForMessage(message, 'processed')
     // Only return network fee, not including platform fee since it comes from reclaimed rent
