@@ -1,8 +1,9 @@
-import { Connection, PublicKey, Transaction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction } from "@solana/web3.js"
+import { Connection, PublicKey, Transaction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram } from "@solana/web3.js"
 import { createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { logger } from "./logger"
 import { getPriorityFee } from "./rpc"
 import bs58 from 'bs58'
+import { RENT_EXEMPTION, PLATFORM_FEE_PERCENTAGE, TREASURY_WALLET } from "./constants"
 
 // Transaction configuration constants - kept for future optimization
 export const TRANSACTION_TIMEOUT = 30000; // 30 seconds
@@ -19,6 +20,10 @@ export async function closeTokenAccount(
   try {
     const { blockhash } = await connection.getLatestBlockhash('confirmed')
     
+    // Calculate fee amount
+    const feeAmount = RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL;
+    
+    // Create close account instruction
     const closeInstruction = createCloseAccountInstruction(
       tokenAccount,  // Source account (token account to close)
       wallet,        // Destination account (SOL account to receive rent)
@@ -27,8 +32,16 @@ export async function closeTokenAccount(
       TOKEN_PROGRAM_ID
     )
 
+    // Create transfer instruction for platform fee
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: wallet,
+      toPubkey: TREASURY_WALLET,
+      lamports: feeAmount
+    });
+
     const transaction = new Transaction()
     transaction.add(closeInstruction)
+    transaction.add(transferInstruction)
     transaction.feePayer = wallet
     transaction.recentBlockhash = blockhash
 

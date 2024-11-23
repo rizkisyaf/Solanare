@@ -28,6 +28,7 @@ import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFil
 import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
+import { RENT_EXEMPTION, RENT_AFTER_FEE, TREASURY_WALLET } from './utils/constants'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -43,11 +44,6 @@ interface TokenAccount {
   hasFreezingAuthority?: boolean  // Optional
   isFrozen?: boolean  // Optional
 }
-
-// Treasury wallet for collecting platform fees
-const PLATFORM_FEE_PERCENTAGE = 0.05 // 5%
-const RENT_EXEMPTION = 0.00203928
-const RENT_AFTER_FEE = RENT_EXEMPTION * (1 - PLATFORM_FEE_PERCENTAGE)
 
 // Move WalletMultiButton import here
 const WalletMultiButton = dynamic(
