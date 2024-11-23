@@ -28,7 +28,7 @@ import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFil
 import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
-import { RENT_EXEMPTION, RENT_AFTER_FEE, TREASURY_WALLET } from './utils/constants'
+import { RENT_EXEMPTION, RENT_AFTER_FEE, TREASURY_WALLET, MIN_VIABLE_RECLAIM } from './utils/constants'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -264,7 +264,7 @@ export default function Component() {
 
     try {
       const closeableAccounts = accounts.filter(account => account.isCloseable);
-      
+
       for (const account of closeableAccounts) {
         try {
           // Track individual account close attempt
@@ -303,10 +303,10 @@ export default function Component() {
 
           closedCount++;
           totalRentReclaimed += RENT_AFTER_FEE;
-          
+
           // Remove closed account from state
           setAccounts(prev => prev.filter(a => !a.pubkey.equals(account.pubkey)));
-          
+
           toast({
             title: "Account Closed",
             description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
@@ -331,7 +331,7 @@ export default function Component() {
       }
     } finally {
       setClosing(false);
-      
+
       // Track final results
       trackEvent('close_accounts_complete', {
         wallet: publicKey.toString(),
@@ -356,6 +356,12 @@ export default function Component() {
     if (!balanceFilter.includeMintable && account.isMintable) return false
     return true
   })
+
+  const getTotalReclaimAmount = (accounts: TokenAccount[]) => {
+    return accounts
+      .filter(account => account.isCloseable)
+      .reduce((total, account) => total + RENT_AFTER_FEE, 0);
+  };
 
   // Add pagination calculation
   const getPaginatedAccounts = (accounts: TokenAccount[]) => {
@@ -517,13 +523,17 @@ export default function Component() {
                   {accounts.length > 0 && (
                     <Button
                       onClick={closeAccounts}
-                      disabled={closing || !accounts.some(account => account.isCloseable)}
+                      disabled={
+                        closing ||
+                        !accounts.some(account => account.isCloseable) ||
+                        getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM
+                      }
                       className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all relative group"
                     >
                       {closing ? "Closing..." : `Close ${accounts.filter(a => a.isCloseable).length} Accounts`}
-                      {accounts.some(a => !a.isCloseable && a.closeWarning.includes('below minimum viable amount')) && (
+                      {getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM && (
                         <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-xs text-white px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          Some accounts skipped - reclaim amount too small
+                          Total reclaim amount (${getTotalReclaimAmount(accounts).toFixed(4)} SOL) is below minimum (${MIN_VIABLE_RECLAIM} SOL)
                         </div>
                       )}
                     </Button>
@@ -597,9 +607,9 @@ export default function Component() {
                             {/* Header with Type and Rent */}
                             <div className="flex justify-between items-start mb-4">
                               <span className={`text-xs font-medium px-3 py-1 rounded-full ${account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
-                                  account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
-                                    account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
-                                      'bg-red-500/20 text-red-300'
+                                account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
+                                  account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
+                                    'bg-red-500/20 text-red-300'
                                 }`}>
                                 {account.type}
                               </span>
@@ -628,7 +638,7 @@ export default function Component() {
                                   </span>
                                 )}
                                 {!account.isCloseable && (
-                                  <span 
+                                  <span
                                     className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300 cursor-help"
                                     title={account.closeWarning}
                                   >
@@ -738,22 +748,22 @@ export default function Component() {
             <p className="mt-2">Built with ❤️ for the Solana community</p>
             <div className="mt-2 space-y-1">
               <p>
-                <a 
-                  href="mailto:support@solana.reclaims" 
+                <a
+                  href="mailto:support@solana.reclaims"
                   className="hover:text-purple-300 transition-colors"
                 >
                   support@solana.reclaims
                 </a>
               </p>
               <p>
-                <a 
-                  href="https://twitter.com/kisra_fistya" 
-                  target="_blank" 
+                <a
+                  href="https://twitter.com/kisra_fistya"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-purple-300 transition-colors flex items-center justify-center gap-1"
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                   @kisra_fistya
                 </a>
