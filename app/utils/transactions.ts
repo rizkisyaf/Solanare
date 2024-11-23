@@ -4,10 +4,11 @@ import { logger } from "./logger"
 import { getPriorityFee } from "./rpc"
 import bs58 from 'bs58'
 
-const TRANSACTION_TIMEOUT = 60000 // 60 seconds
-const CONFIRMATION_INTERVAL = 5000 // 5 seconds
-const COMPUTE_UNIT_LIMIT = 1_400_000 // Maximum compute units
-const COMPUTE_UNIT_PRICE = 1_000 // Base price in microlamports
+// Transaction configuration constants - kept for future optimization
+export const TRANSACTION_TIMEOUT = 30000; // 30 seconds
+export const CONFIRMATION_INTERVAL = 1000; // 1 second
+export const COMPUTE_UNIT_LIMIT = 200_000;
+export const COMPUTE_UNIT_PRICE = 15_000;
 
 export async function closeTokenAccount(
   connection: Connection,

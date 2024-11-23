@@ -27,6 +27,7 @@ import { BalanceFilter } from './types/accounts'
 import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
+import { useAnalytics } from './hooks/useAnalytics'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -80,6 +81,7 @@ export default function Component() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { toast } = useToast()
+  const { trackEvent } = useAnalytics()
 
   // Mounting effect
   useEffect(() => {
@@ -149,17 +151,31 @@ export default function Component() {
   }
 
   const scanAccounts = async () => {
-    if (!publicKey) return
+    if (!publicKey) return;
 
-    setLoading(true)
-    setSecurityCheck(undefined)
+    setLoading(true);
+    setSecurityCheck(undefined);
 
     try {
-      logger.info('Starting account scan', { publicKey: publicKey.toString() })
+      // Track scan start
+      trackEvent('scan_accounts_clicked', {
+        wallet: publicKey.toString(),
+        timestamp: new Date().toISOString()
+      });
 
-      const scanResults = await scanAllAccounts(getConnection(), publicKey)
+      logger.info('Starting account scan', { publicKey: publicKey.toString() });
+
+      const scanResults = await scanAllAccounts(getConnection(), publicKey);
 
       if (scanResults) {
+        // Track scan success
+        trackEvent('scan_accounts_success', {
+          wallet: publicKey.toString(),
+          accountsFound: scanResults.tokenAccounts.length,
+          potentialSOL: scanResults.potentialSOL,
+          timestamp: new Date().toISOString()
+        });
+
         const securityCheck = await checkTransactionSecurity(
           connection,
           publicKey,
@@ -200,6 +216,13 @@ export default function Component() {
       }
 
     } catch (error) {
+      // Track scan error
+      trackEvent('scan_accounts_error', {
+        wallet: publicKey.toString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+
       logger.error('Error scanning accounts', {
         error,
         details: {
@@ -219,6 +242,10 @@ export default function Component() {
 
   const closeAccounts = async () => {
     if (!publicKey || !sendTransaction || accounts.length === 0) {
+      trackEvent('close_accounts_failed', {
+        reason: 'wallet_not_connected_or_no_accounts',
+        timestamp: new Date().toISOString()
+      });
       toast({
         title: "Error",
         description: "Wallet not connected or no accounts to close",
@@ -226,6 +253,13 @@ export default function Component() {
       });
       return;
     }
+
+    // Track close start
+    trackEvent('close_accounts_clicked', {
+      wallet: publicKey.toString(),
+      accountCount: accounts.length,
+      timestamp: new Date().toISOString()
+    });
 
     setClosing(true);
     let closedCount = 0;
@@ -237,6 +271,13 @@ export default function Component() {
       
       for (const account of closeableAccounts) {
         try {
+          // Track individual account close attempt
+          trackEvent('close_account_attempt', {
+            wallet: publicKey.toString(),
+            accountType: account.type,
+            timestamp: new Date().toISOString()
+          });
+
           logger.info('Attempting to close account', {
             account: account.pubkey.toString()
           });
@@ -250,6 +291,12 @@ export default function Component() {
 
           if (result.error) {
             failedCount++;
+            trackEvent('close_account_failed', {
+              wallet: publicKey.toString(),
+              accountType: account.type,
+              error: result.error,
+              timestamp: new Date().toISOString()
+            });
             toast({
               title: "Failed to Close Account",
               description: result.error,
@@ -271,6 +318,13 @@ export default function Component() {
 
           // Add delay between transactions
           await new Promise(resolve => setTimeout(resolve, 1000));
+
+          trackEvent('close_account_success', {
+            wallet: publicKey.toString(),
+            accountType: account.type,
+            rentReclaimed: RENT_AFTER_FEE,
+            timestamp: new Date().toISOString()
+          });
         } catch (error) {
           failedCount++;
           logger.error('Error closing account:', {
@@ -281,10 +335,14 @@ export default function Component() {
       }
     } finally {
       setClosing(false);
-      logger.info('Account closure complete', {
+      
+      // Track final results
+      trackEvent('close_accounts_complete', {
+        wallet: publicKey.toString(),
         closedCount,
         failedCount,
-        totalRentReclaimed
+        totalRentReclaimed,
+        timestamp: new Date().toISOString()
       });
     }
   };

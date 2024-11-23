@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -24,4 +25,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Combine the Sentry options into a single configuration object
+const sentryWebpackPluginOptions = {
+  silent: true,
+  org: "solanare",
+  project: "solanareclaims",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  hideSourceMaps: true,
+  disableLogger: true,
+};
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

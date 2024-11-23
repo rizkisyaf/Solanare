@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 type LogData = {
   error?: Error | unknown
   details?: Record<string, any>
@@ -9,14 +11,29 @@ type LoggerFunction = (message: string, data?: LogData | Error | unknown) => voi
 export const logger = {
   info: ((message: string, data?: LogData | Error | unknown) => {
     console.log(`[INFO] ${message}`, formatLogData(normalizeLogData(data)))
+    Sentry.addBreadcrumb({
+      category: 'info',
+      message,
+      level: 'info',
+      data: normalizeLogData(data),
+    })
   }) as LoggerFunction,
   
   warn: ((message: string, data?: LogData | Error | unknown) => {
     console.warn(`[WARN] ${message}`, formatLogData(normalizeLogData(data)))
+    Sentry.addBreadcrumb({
+      category: 'warning',
+      message,
+      level: 'warning',
+      data: normalizeLogData(data),
+    })
   }) as LoggerFunction,
   
   error: ((message: string, data?: LogData | Error | unknown) => {
     console.error(`[ERROR] ${message}`, formatLogData(normalizeLogData(data)))
+    Sentry.captureException(data instanceof Error ? data : new Error(message), {
+      extra: normalizeLogData(data),
+    })
   }) as LoggerFunction
 }
 
