@@ -219,22 +219,29 @@ export default function Component() {
   }
 
   const closeAccounts = async () => {
-    if (!publicKey || !sendTransaction) return;
-    
+    if (!publicKey || !sendTransaction || accounts.length === 0) {
+      toast({
+        title: "Error",
+        description: "Wallet not connected or no accounts to close",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setClosing(true);
     let closedCount = 0;
     let failedCount = 0;
     let totalRentReclaimed = 0;
 
     try {
-      for (const account of accounts) {
-        if (!account.isCloseable) continue;
-
-        logger.info('Attempting to close account', {
-          account: account.pubkey.toString()
-        });
-
+      const closeableAccounts = accounts.filter(account => account.isCloseable);
+      
+      for (const account of closeableAccounts) {
         try {
+          logger.info('Attempting to close account', {
+            account: account.pubkey.toString()
+          });
+
           const result = await closeTokenAccount(
             connection,
             publicKey,
@@ -244,6 +251,11 @@ export default function Component() {
 
           if (result.error) {
             failedCount++;
+            toast({
+              title: "Failed to Close Account",
+              description: result.error,
+              variant: "destructive",
+            });
             continue;
           }
 
@@ -252,7 +264,14 @@ export default function Component() {
           
           // Remove closed account from state
           setAccounts(prev => prev.filter(a => !a.pubkey.equals(account.pubkey)));
+          
+          toast({
+            title: "Account Closed",
+            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
+          });
 
+          // Add delay between transactions
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
           failedCount++;
           logger.error('Error closing account:', {
@@ -261,15 +280,13 @@ export default function Component() {
           });
         }
       }
-    } catch (error) {
-      logger.error('Account closure failed', { error });
-      toast({
-        title: "Error",
-        description: "Failed to close accounts",
-        variant: "destructive",
-      });
     } finally {
       setClosing(false);
+      logger.info('Account closure complete', {
+        closedCount,
+        failedCount,
+        totalRentReclaimed
+      });
     }
   };
 
@@ -607,7 +624,7 @@ export default function Component() {
                               className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
                             />
                           </PaginationItem>
-                          {Array.from({ length: Math.ceil(accounts.length / ITEMS_PER_PAGE) }, (_, i) => (
+                          {Array.from({ length: totalPages }, (_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
                                 href="#"
@@ -626,9 +643,9 @@ export default function Component() {
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault()
-                                setCurrentPage(p => Math.min(Math.ceil(accounts.length / ITEMS_PER_PAGE), p + 1))
+                                setCurrentPage(p => Math.min(totalPages, p + 1))
                               }}
-                              className={currentPage === Math.ceil(accounts.length / ITEMS_PER_PAGE) ? 'opacity-50 cursor-not-allowed' : ''}
+                              className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
                             />
                           </PaginationItem>
                         </PaginationContent>

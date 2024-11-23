@@ -1,5 +1,5 @@
 import { Connection, PublicKey, Transaction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction } from "@solana/web3.js"
-import { createCloseAccountInstruction } from "@solana/spl-token"
+import { createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { logger } from "./logger"
 import { getPriorityFee } from "./rpc"
 import bs58 from 'bs58'
@@ -16,56 +16,36 @@ export async function closeTokenAccount(
   sendTransaction: (transaction: Transaction | VersionedTransaction, connection: Connection) => Promise<string>
 ) {
   try {
-    // Get latest blockhash with "processed" commitment
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('processed')
+    const { blockhash } = await connection.getLatestBlockhash('confirmed')
     
-    // Create base instruction
     const closeInstruction = createCloseAccountInstruction(
-      tokenAccount,
-      wallet,
-      wallet
+      tokenAccount,  // Source account (token account to close)
+      wallet,        // Destination account (SOL account to receive rent)
+      wallet,        // Owner of the token account
+      [],           // No multisig signers
+      TOKEN_PROGRAM_ID
     )
 
-    // Create test transaction to simulate compute units
-    const testTx = new Transaction().add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: COMPUTE_UNIT_LIMIT }),
-      closeInstruction
-    )
-    testTx.feePayer = wallet
-    testTx.recentBlockhash = blockhash
-
-    // Simulate to get compute units consumed
-    const simulation = await connection.simulateTransaction(testTx)
-    const unitsConsumed = Math.ceil((simulation.value?.unitsConsumed || 0) * 1.1) // Add 10% margin
-
-    // Get priority fee estimate
-    const serializedTx = bs58.encode(testTx.serialize())
-    const priorityFee = await getPriorityFee(serializedTx)
-
-    // Build final transaction with optimized compute units and priority fee
-    const transaction = new Transaction().add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: unitsConsumed }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }),
-      closeInstruction
-    )
-
+    const transaction = new Transaction()
+    transaction.add(closeInstruction)
     transaction.feePayer = wallet
     transaction.recentBlockhash = blockhash
 
-    // Send transaction with skipPreflight
+    // Sign and send transaction
     const signature = await sendTransaction(transaction, connection)
     
-    // Poll for confirmation with timeout
-    const startTime = Date.now()
-    while (Date.now() - startTime < TRANSACTION_TIMEOUT) {
-      const status = await connection.getSignatureStatus(signature)
-      if (status?.value?.confirmationStatus === 'confirmed') {
-        return { signature }
-      }
-      await new Promise(resolve => setTimeout(resolve, CONFIRMATION_INTERVAL))
+    // Wait for confirmation
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+    })
+
+    if (confirmation.value.err) {
+      throw new Error('Transaction failed')
     }
 
-    throw new Error('Transaction confirmation timeout')
+    return { signature }
 
   } catch (error) {
     logger.error('Failed to close token account', {
