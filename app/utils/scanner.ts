@@ -1,9 +1,10 @@
-import { Connection, PublicKey, AccountInfo as SolanaAccountInfo, Transaction, Commitment } from "@solana/web3.js"
+import { Connection, PublicKey, AccountInfo as SolanaAccountInfo, Transaction, Commitment, LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint } from "@solana/spl-token"
 import { logger } from "./logger"
 import { withFallback } from "./rpc"
 import { rateLimit } from "./rateLimit"
 import { createCloseAccountMessage } from "./transactions"
+import { PLATFORM_FEE_PERCENTAGE } from "./constants"
 
 interface AccountInfo {
   pubkey: PublicKey
@@ -52,12 +53,12 @@ async function withRetry<T>(
       return await operation()
     } catch (error) {
       if (i === MAX_RETRIES - 1) throw error
-      
+
       logger.warn(`Failed to scan program ${program}, will retry`, {
         error,
         details: { program }
       })
-      
+
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
     }
   }
@@ -75,7 +76,7 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
         ),
         'TOKEN_PROGRAM'
       )
-      
+
       const results = await Promise.allSettled(
         accounts.value.map(async account => {
           try {
@@ -86,12 +87,18 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
 
             const parsedInfo = account.account.data.parsed.info
             const mint = new PublicKey(parsedInfo.mint)
-            
+
             try {
               const mintInfo = await getMint(connection, mint)
               const closeEstimate = await estimatedCloseCost(connection, publicKey, account.pubkey)
               const userBalance = await connection.getBalance(publicKey, 'processed')
-              const canPayForClose = userBalance >= closeEstimate
+
+              // Calculate total cost: transaction fee + platform fee
+              const platformFee = Math.floor(RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL)
+              const totalCost = closeEstimate + platformFee
+
+              // User can close if their current balance can cover the costs
+              const canPayForClose = userBalance >= totalCost
 
               // Rest of the account processing logic
               return {
@@ -121,7 +128,7 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
       )
 
       return results
-        .filter((result): result is PromiseFulfilledResult<AccountInfo | null> => 
+        .filter((result): result is PromiseFulfilledResult<AccountInfo | null> =>
           result.status === 'fulfilled' && result.value !== null
         )
         .map(result => result.value as AccountInfo)
@@ -143,7 +150,7 @@ async function estimatedCloseCost(
     const transaction = await createCloseAccountMessage(connection, wallet, accountToClose)
     transaction.recentBlockhash = blockhash
     transaction.feePayer = wallet
-    
+
     const message = transaction.compileMessage()
     const response = await connection.getFeeForMessage(message, 'processed')
     return response.value || 5000
@@ -158,10 +165,10 @@ async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Pro
     // Batch requests to avoid rate limits
     const batchSize = 2;
     const results: AccountInfo[] = [];
-    
+
     for (let i = 0; i < Object.entries(KNOWN_PROGRAMS).length; i += batchSize) {
       const batch = Object.entries(KNOWN_PROGRAMS).slice(i, i + batchSize);
-      
+
       const batchResults = await Promise.allSettled(
         batch.map(async ([name, programId]) => {
           try {
@@ -172,7 +179,7 @@ async function scanOpenOrders(connection: Connection, publicKey: PublicKey): Pro
               ],
               commitment: 'confirmed'
             });
-            
+
             return programAccounts.map(account => ({
               pubkey: account.pubkey,
               mint: 'unknown',
