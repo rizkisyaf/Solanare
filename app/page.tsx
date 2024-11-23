@@ -676,6 +676,29 @@ export default function Component() {
           <div className="container mx-auto px-4 text-center text-purple-300/50 text-sm">
             <p>© 2024 Solanare. All rights reserved.</p>
             <p className="mt-2">Built with ❤️ for the Solana community</p>
+            <div className="mt-2 space-y-1">
+              <p>
+                <a 
+                  href="mailto:support@solana.reclaims" 
+                  className="hover:text-purple-300 transition-colors"
+                >
+                  support@solana.reclaims
+                </a>
+              </p>
+              <p>
+                <a 
+                  href="https://twitter.com/kisra_fistya" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-purple-300 transition-colors flex items-center justify-center gap-1"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                  @kisra_fistya
+                </a>
+              </p>
+            </div>
           </div>
         </footer>
       </div>
