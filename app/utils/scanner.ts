@@ -150,9 +150,10 @@ async function estimatedCloseCost(
     const transaction = await createCloseAccountMessage(connection, wallet, accountToClose)
     transaction.recentBlockhash = blockhash
     transaction.feePayer = wallet
-
+    
     const message = transaction.compileMessage()
     const response = await connection.getFeeForMessage(message, 'processed')
+    // Only return network fee, not including platform fee since it comes from reclaimed rent
     return response.value || 5000
   } catch (error) {
     logger.warn('Error estimating close cost', { error })

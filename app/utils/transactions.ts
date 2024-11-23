@@ -23,25 +23,25 @@ export async function closeTokenAccount(
     // Calculate fee amount (ensure integer value for lamports)
     const feeAmount = Math.floor(RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL);
     
-    // Create close account instruction
+    // Create close account instruction that sends rent to an intermediate account
     const closeInstruction = createCloseAccountInstruction(
-      tokenAccount,  // Source account (token account to close)
-      wallet,        // Destination account (SOL account to receive rent)
-      wallet,        // Owner of the token account
-      [],           // No multisig signers
+      tokenAccount,    // Source account (token account to close)
+      TREASURY_WALLET, // Destination account (temporary holder for rent)
+      wallet,          // Owner of the token account
+      [],             // No multisig signers
       TOKEN_PROGRAM_ID
     )
 
-    // Create transfer instruction for platform fee
-    const transferInstruction = SystemProgram.transfer({
-      fromPubkey: wallet,
-      toPubkey: TREASURY_WALLET,
-      lamports: feeAmount
+    // Create transfer instruction to send rent minus fee back to user
+    const returnRentInstruction = SystemProgram.transfer({
+      fromPubkey: TREASURY_WALLET,
+      toPubkey: wallet,
+      lamports: Math.floor(RENT_EXEMPTION * LAMPORTS_PER_SOL * (1 - PLATFORM_FEE_PERCENTAGE))
     });
 
     const transaction = new Transaction()
     transaction.add(closeInstruction)
-    transaction.add(transferInstruction)
+    transaction.add(returnRentInstruction)
     transaction.feePayer = wallet
     transaction.recentBlockhash = blockhash
 
