@@ -517,10 +517,15 @@ export default function Component() {
                   {accounts.length > 0 && (
                     <Button
                       onClick={closeAccounts}
-                      disabled={closing}
-                      className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all"
+                      disabled={closing || !accounts.some(account => account.isCloseable)}
+                      className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all relative group"
                     >
-                      {closing ? "Closing..." : `Close ${accounts.length} Accounts`}
+                      {closing ? "Closing..." : `Close ${accounts.filter(a => a.isCloseable).length} Accounts`}
+                      {accounts.some(a => !a.isCloseable && a.closeWarning.includes('below minimum viable amount')) && (
+                        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-xs text-white px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          Some accounts skipped - reclaim amount too small
+                        </div>
+                      )}
                     </Button>
                   )}
                 </div>
@@ -623,8 +628,10 @@ export default function Component() {
                                   </span>
                                 )}
                                 {!account.isCloseable && (
-                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300"
-                                    title={account.closeWarning}>
+                                  <span 
+                                    className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300 cursor-help"
+                                    title={account.closeWarning}
+                                  >
                                     Not Closeable
                                   </span>
                                 )}
