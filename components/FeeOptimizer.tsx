@@ -140,28 +140,48 @@ function DexFeeCard({ name, fee, successRate }: { name: string; fee: number; suc
 }
 
 async function getHistoricalSuccess(connection: Connection, priorityFee: number): Promise<number> {
-  const signatures = await connection.getSignaturesForAddress(
-    connection.rpcEndpoint as unknown as PublicKey,
-    { limit: 1000 }
-  );
-  const txs = await connection.getParsedTransactions(signatures.map(s => s.signature));
-  const relevantTxs = txs.filter(tx => tx?.meta && 'computeUnitsPrice' in tx.meta && tx.meta.computeUnitsPrice === priorityFee);
-  
-  return relevantTxs.length > 0 
-    ? (relevantTxs.filter(tx => !tx?.meta?.err).length / relevantTxs.length) * 100
-    : 0;
+  try {
+    // Get recent blocks instead of signatures
+    const blocks = await connection.getRecentPerformanceSamples(20);
+    const avgSuccessRate = blocks.reduce((acc, block) => {
+      const successRate = (block.numTransactions - block.numSlots) / block.numTransactions;
+      return acc + (successRate * 100);
+    }, 0) / blocks.length;
+
+    return Math.round(avgSuccessRate);
+  } catch (error) {
+    console.error('Error getting historical success:', error);
+    return 95; // Fallback default
+  }
 }
 
 async function getMempoolStats(connection: Connection): Promise<MempoolStats> {
-  const slots = await connection.getRecentPerformanceSamples(10);
-  const avgTxCount = slots.reduce((acc, slot) => acc + slot.numTransactions, 0) / slots.length;
+  try {
+    const [slots, recentBlockhash] = await Promise.all([
+      connection.getRecentPerformanceSamples(5),
+      connection.getLatestBlockhash()
+    ]);
+    
+    const avgTxCount = slots.reduce((acc, slot) => acc + slot.numTransactions, 0) / slots.length;
+    const avgSuccessRate = slots.reduce((acc, slot) => {
+      return acc + ((slot.numTransactions - slot.numSlots) / slot.numTransactions);
+    }, 0) / slots.length * 100;
 
-  return {
-    pendingTxs: Math.round(avgTxCount * 1.5), // Estimate pending
-    competingTxs: Math.round(avgTxCount * 0.3), // Estimate competing
-    avgWaitTime: slots[0].samplePeriodSecs * 1000,
-    recentSuccessRate: (slots[0].numTransactions - slots[0].numSlots) / slots[0].numTransactions * 100
-  };
+    return {
+      pendingTxs: Math.round(avgTxCount),
+      competingTxs: Math.round(avgTxCount * 0.2), // Estimate of competing txs
+      avgWaitTime: slots[0].samplePeriodSecs * 1000,
+      recentSuccessRate: Math.round(avgSuccessRate)
+    };
+  } catch (error) {
+    console.error('Error getting mempool stats:', error);
+    return {
+      pendingTxs: 0,
+      competingTxs: 0,
+      avgWaitTime: 0,
+      recentSuccessRate: 0
+    };
+  }
 }
 
 async function getDexFees(connection: Connection): Promise<DexFees> {
