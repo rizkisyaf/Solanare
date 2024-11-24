@@ -335,12 +335,6 @@ export default function Component() {
                 >
                   Bump Token 🚀
                 </Link>
-                <Link
-                  href="/fee-monitor"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  Fee Monitor 📊
-                </Link>
               </div>
               <motion.div
                 initial={{ opacity: 0 }}
