@@ -6,7 +6,7 @@ const MIN_SOL_AMOUNT = 0.01
 const SLIPPAGE_BPS = 100
 const HOLDER_COOLDOWN = 30 * 60 * 1000
 const NORMAL_COOLDOWN = 60 * 60 * 1000
-const PLATFORM_FEE_BPS = 200 // 2% fee
+const PLATFORM_FEE_BPS = 20 // 0.2% fee
 const REFERRAL_ACCOUNT = new PublicKey("FMeQzCuuqWvqFHEbvYJbdZBJa4fqbmwBjDbLKPBuyTjF")
 
 export async function createBumpTransaction(
@@ -19,20 +19,24 @@ export async function createBumpTransaction(
       throw new Error(`Minimum amount is ${MIN_SOL_AMOUNT} SOL`)
     }
 
-    // Derive fee token account
+    // Get fee account for SOL (input token)
     const [feeAccount] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("referral_ata"),
         REFERRAL_ACCOUNT.toBuffer(),
-        new PublicKey(SOLANARE_TOKEN).toBuffer()
+        new PublicKey("So11111111111111111111111111111111111111112").toBuffer()
       ],
       new PublicKey("REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3")
     )
 
-    const quoteResponse = await fetch(
-      `${JUPITER_QUOTE_API}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${SOLANARE_TOKEN}&amount=${amount * 1e9}&slippageBps=${SLIPPAGE_BPS}&platformFeeBps=${PLATFORM_FEE_BPS}`
-    )
-    
+    const quoteUrl = new URL(`${JUPITER_QUOTE_API}/quote`)
+    quoteUrl.searchParams.append("inputMint", "So11111111111111111111111111111111111111112")
+    quoteUrl.searchParams.append("outputMint", SOLANARE_TOKEN.toString())
+    quoteUrl.searchParams.append("amount", (amount * 1e9).toString())
+    quoteUrl.searchParams.append("slippageBps", SLIPPAGE_BPS.toString())
+    quoteUrl.searchParams.append("platformFeeBps", PLATFORM_FEE_BPS.toString())
+
+    const quoteResponse = await fetch(quoteUrl.toString())
     if (!quoteResponse.ok) throw new Error(`Quote failed: ${quoteResponse.statusText}`)
     const quoteData = await quoteResponse.json()
 
@@ -56,8 +60,7 @@ export async function createBumpTransaction(
     }
     
     const { swapTransaction } = await swapResponse.json()
-    const tx = Transaction.from(Buffer.from(swapTransaction, 'base64'))
-    return tx
+    return Transaction.from(Buffer.from(swapTransaction, 'base64'))
   } catch (error) {
     console.error('Jupiter swap error:', error)
     throw error
