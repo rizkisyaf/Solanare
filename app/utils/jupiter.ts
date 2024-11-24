@@ -40,10 +40,15 @@ export async function createBumpTransaction(
         quoteResponse: quoteData,
         userPublicKey: wallet.toString(),
         wrapAndUnwrapSol: true,
-        computeUnitPriceMicroLamports: "auto",
-        prioritizationFeeLamports: "auto",
         asLegacyTransaction: true,
+        prioritizationFeeLamports: {
+          priorityLevelWithMaxLamports: {
+            priorityLevel: "high",
+            maxLamports: 5000000
+          }
+        },
         dynamicComputeUnitLimit: true,
+        skipUserAccountsRpcCalls: false,
         dynamicSlippage: {
           minBps: SLIPPAGE_BPS,
           maxBps: 300
