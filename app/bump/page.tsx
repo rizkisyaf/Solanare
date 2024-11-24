@@ -54,10 +54,14 @@ export default function BumpPage() {
     const fetchBumpHistory = async () => {
         try {
             const response = await fetch('/api/bumps')
+            if (!response.ok) {
+                throw new Error('Failed to fetch bump history')
+            }
             const data = await response.json()
-            setBumpHistory(data)
+            setBumpHistory(Array.isArray(data) ? data : [])
         } catch (error) {
             console.error('Error fetching bump history:', error)
+            setBumpHistory([])
         } finally {
             setLoadingHistory(false)
         }
@@ -237,43 +241,47 @@ export default function BumpPage() {
                                 Recent Bumps
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-                                {bumpHistory.map((bump) => (
-                                    <motion.div
-                                        key={bump.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className={`
+                            {!loadingHistory && bumpHistory && bumpHistory.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                                    {bumpHistory.map((bump) => (
+                                        <motion.div
+                                            key={bump.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`
           p-4 rounded-lg backdrop-blur-sm
           ${bump.isHolder
                                                 ? 'bg-purple-900/20 border-2 border-purple-500/50'
                                                 : 'bg-black/30 border border-purple-500/20'}
         `}
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="text-sm text-purple-300/70">
-                                                {new Date(bump.timestamp).toLocaleString()}
-                                            </div>
-                                            {bump.isHolder && (
-                                                <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-2 py-0.5 rounded-full text-xs">
-                                                    Token Holder 💎
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="text-sm font-mono text-purple-300">
-                                            {bump.walletAddress.slice(0, 4)}...{bump.walletAddress.slice(-4)}
-                                        </div>
-                                        <a
-                                            href={`https://solscan.io/tx/${bump.signature}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-purple-300/50 hover:text-purple-300 transition-colors"
                                         >
-                                            View Transaction ↗
-                                        </a>
-                                    </motion.div>
-                                ))}
-                            </div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="text-sm text-purple-300/70">
+                                                    {new Date(bump.timestamp).toLocaleString()}
+                                                </div>
+                                                {bump.isHolder && (
+                                                    <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-2 py-0.5 rounded-full text-xs">
+                                                        Token Holder 💎
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-sm font-mono text-purple-300">
+                                                {bump.walletAddress.slice(0, 4)}...{bump.walletAddress.slice(-4)}
+                                            </div>
+                                            <a
+                                                href={`https://solscan.io/tx/${bump.signature}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-purple-300/50 hover:text-purple-300 transition-colors"
+                                            >
+                                                View Transaction ↗
+                                            </a>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-purple-300/70">No bumps yet</p>
+                            )}
                         </div>
                     </motion.div>
                 </main>
