@@ -28,7 +28,7 @@ export function StarField() {
 
         const initStars = () => {
             stars.length = 0
-            const numberOfStars = Math.floor((canvas.width * canvas.height) / 4000)
+            const numberOfStars = Math.floor((canvas.width * canvas.height) / 8000)
 
             for (let i = 0; i < numberOfStars; i++) {
                 stars.push({
@@ -41,16 +41,16 @@ export function StarField() {
         }
 
         const drawStars = () => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'
             ctx.fillRect(0, 0, canvas.width, canvas.height)
 
             stars.forEach(star => {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+                ctx.fillStyle = 'rgba(147, 51, 234, 0.4)'
                 ctx.beginPath()
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
+                ctx.arc(star.x, star.y, star.size * 0.7, 0, Math.PI * 2)
                 ctx.fill()
 
-                star.y = (star.y + star.speed) % canvas.height
+                star.y = (star.y + star.speed * 0.5) % canvas.height
             })
 
             animationFrameId = requestAnimationFrame(drawStars)

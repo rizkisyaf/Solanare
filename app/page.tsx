@@ -81,6 +81,7 @@ export default function Component() {
   const [isCheckingTokenHolder, setIsCheckingTokenHolder] = useState(false)
   const [isTokenHolder, setIsTokenHolder] = useState(false)
   const [messageError, setMessageError] = useState<string>('')
+  const [showMessageInput, setShowMessageInput] = useState(false);
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -214,6 +215,14 @@ export default function Component() {
     }
   }
 
+  const handlePreClose = () => {
+    if (isTokenHolder) {
+        setShowMessageInput(true);
+    } else {
+        closeAccounts();
+    }
+  };
+
   const closeAccounts = async () => {
     if (!publicKey || !connection || closing) return;
     setClosing(true);
@@ -301,58 +310,60 @@ export default function Component() {
   const paginatedAccounts = getPaginatedAccounts(filteredAccounts)
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black">
+    <div className="relative min-h-screen flex flex-col bg-black">
       <StarField />
-
+      
       {/* Cosmic Dust */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src="/voidora-logo.svg"
-                    alt="Voidora Logo"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
-                  <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
-                </div>
-                <Link
-                  href="/museum"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  Museum 🏛️
-                </Link>
-                <Link
-                  href="/bump"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  Bump Token 🚀
-                </Link>
+      {/* Navbar - fixed at top */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/voidora-logo.svg"
+                  alt="Voidora Logo"
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
+                <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
               </div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
+              <Link
+                href="/museum"
+                className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
               >
-                <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full" />
-              </motion.div>
+                Museum 🏛️
+              </Link>
+              <Link
+                href="/bump"
+                className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+              >
+                Bump Token 🚀
+              </Link>
             </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full" />
+            </motion.div>
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        <main className="container mx-auto px-4 pt-20 pb-32 text-center">
-          <div className="min-h-screen flex flex-col justify-center">
+      {/* Main scrollable content */}
+      <main className="flex-1 overflow-y-auto z-20">
+        <div className="container max-w-6xl mx-auto px-4 pt-24 pb-24">
+          <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
+              className="w-full flex justify-center"
             >
               {/* Black Hole Animation */}
               <BlackHole
@@ -387,7 +398,7 @@ export default function Component() {
               </span>
             </h1>
 
-            <p className="text-2xl text-purple-300/70 mb-12 max-w-2xl mx-auto">
+            <p className="text-2xl text-purple-300/70 mb-12 max-w-2xl mx-auto text-center">
               Watch your zero-balance accounts disappear into the cosmic void, reclaiming precious SOL
             </p>
 
@@ -495,7 +506,7 @@ export default function Component() {
                   </div>
                   {accounts.length > 0 && (
                     <Button
-                      onClick={closeAccounts}
+                      onClick={handlePreClose}
                       disabled={
                         closing ||
                         !accounts.some(account => account.isCloseable) ||
@@ -712,44 +723,90 @@ export default function Component() {
               </motion.div>
             )}
           </div>
-        </main>
+        </div>
+      </main>
 
-        {/* Add footer */}
-        <footer className="py-6 border-t border-purple-500/20">
-          <div className="container mx-auto px-4 text-center text-purple-300/50 text-sm">
-            <p>© 2024 Solanare. All rights reserved.</p>
-            <p className="mt-2">Built with ❤️ for the Solana community</p>
-            <div className="mt-2 space-y-1">
-              <p>
-                <a
-                  href="mailto:support@solana.reclaims"
-                  className="hover:text-purple-300 transition-colors"
-                >
-                  support@solana.reclaims
-                </a>
-              </p>
-              <p>
-                <a
-                  href="https://twitter.com/kisra_fistya"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-purple-300 transition-colors flex items-center justify-center gap-1"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                  @kisra_fistya
-                </a>
-              </p>
+      {/* Fixed footer */}
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-purple-300/50">
+              <p>© 2024 Solanare. All rights reserved.</p>
+              <p>Built with ❤️ for the Solana community</p>
+            </div>
+            
+            <div className="flex items-center gap-6">
+              <a
+                href="mailto:support@solana.reclaims"
+                className="text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
+              >
+                support@solana.reclaims
+              </a>
+              
+              <a
+                href="https://twitter.com/kisra_fistya"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                @kisra_fistya
+              </a>
             </div>
           </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
 
       <SecurityStatus
         isScanning={loading}
         securityCheck={securityCheck}
       />
+
+      {showMessageInput && (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+        >
+            <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                className="bg-purple-900/50 p-6 rounded-xl border border-purple-500/20 max-w-md w-full mx-4"
+            >
+                <h3 className="text-xl font-bold text-purple-300 mb-4">Add Personal Message</h3>
+                <input
+                    type="text"
+                    value={personalMessage}
+                    onChange={handleMessageChange}
+                    placeholder="Enter your message (optional)"
+                    className="w-full bg-black/50 border border-purple-500/20 rounded-lg px-4 py-2 text-purple-300 placeholder:text-purple-300/50 focus:outline-none focus:border-purple-500/50"
+                    maxLength={100}
+                />
+                {messageError && <p className="text-red-400 text-sm mt-2">{messageError}</p>}
+                <div className="flex justify-end gap-4 mt-6">
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setShowMessageInput(false);
+                            setPersonalMessage('');
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            setShowMessageInput(false);
+                            closeAccounts();
+                        }}
+                    >
+                        Continue
+                    </Button>
+                </div>
+            </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }
