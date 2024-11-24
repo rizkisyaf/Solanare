@@ -28,8 +28,7 @@ interface ReclaimRecord {
 
 export default function MuseumPage() {
   const [reclaims, setReclaims] = useState<ReclaimRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const { publicKey } = useWallet()
+  const [_loading, setLoading] = useState(true)
   const { toast } = useToast()
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 

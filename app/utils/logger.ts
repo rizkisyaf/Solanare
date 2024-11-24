@@ -8,8 +8,13 @@ type LogData = {
 
 type LoggerFunction = (message: string, data?: LogData | Error | unknown) => void
 
+interface LoggerOptions {
+  level: string;
+  data?: Record<string, unknown>;
+}
+
 export const logger = {
-  info: ((message: string, data?: LogData | Error | unknown) => {
+  info: ((message: string, data?: Record<string, unknown>) => {
     console.log(`[INFO] ${message}`, formatLogData(normalizeLogData(data)))
     Sentry.addBreadcrumb({
       category: 'info',
@@ -29,10 +34,10 @@ export const logger = {
     })
   }) as LoggerFunction,
   
-  error: ((message: string, data?: LogData | Error | unknown) => {
-    console.error(`[ERROR] ${message}`, formatLogData(normalizeLogData(data)))
-    Sentry.captureException(data instanceof Error ? data : new Error(message), {
-      extra: normalizeLogData(data),
+  error: ((message: string, error: Error | unknown) => {
+    console.error(`[ERROR] ${message}`, formatLogData(normalizeLogData(error)))
+    Sentry.captureException(error instanceof Error ? error : new Error(message), {
+      extra: normalizeLogData(error),
     })
   }) as LoggerFunction
 }
