@@ -6,7 +6,7 @@ const MIN_SOL_AMOUNT = 0.01
 const SLIPPAGE_BPS = 100
 const HOLDER_COOLDOWN = 30 * 60 * 1000
 const NORMAL_COOLDOWN = 60 * 60 * 1000
-const PLATFORM_FEE_BPS = 20 // 0.2% fee
+const PLATFORM_FEE_BPS = 200 // 2% fee
 const REFERRAL_ACCOUNT = new PublicKey("FMeQzCuuqWvqFHEbvYJbdZBJa4fqbmwBjDbLKPBuyTjF")
 
 export async function createBumpTransaction(
