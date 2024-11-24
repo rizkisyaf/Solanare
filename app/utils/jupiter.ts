@@ -24,13 +24,13 @@ export async function createBumpTransaction(
       throw new Error(`Minimum amount is ${MIN_SOL_AMOUNT} SOL`);
     }
 
-    // Get Jupiter quote with dynamic amount
-    const quote = await fetch(
+    // Get Jupiter quote
+    const quoteResponse = await fetch(
       `${JUPITER_QUOTE_API}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${SOLANARE_TOKEN}&amount=${amount * 1e9}&slippageBps=${SLIPPAGE_BPS}`
     )
     
-    if (!quote.ok) throw new Error(`Quote failed: ${quote.statusText}`)
-    const quoteData = await quote.json()
+    if (!quoteResponse.ok) throw new Error(`Quote failed: ${quoteResponse.statusText}`)
+    const quoteData = await quoteResponse.json()
 
     // Get swap transaction
     const swapResponse = await fetch(`${JUPITER_QUOTE_API}/swap`, {
@@ -39,18 +39,30 @@ export async function createBumpTransaction(
       body: JSON.stringify({
         quoteResponse: quoteData,
         userPublicKey: wallet.toString(),
-        wrapUnwrapSol: true,
-        computeUnitPriceMicroLamports: 'auto',
-        prioritizationFeeLamports: 'auto',
+        wrapAndUnwrapSol: true,
+        useSharedAccounts: true,
+        computeUnitPriceMicroLamports: "auto",
+        prioritizationFeeLamports: {
+          priorityLevelWithMaxLamports: {
+            priorityLevel: "high",
+            maxLamports: 5000000 // 0.005 SOL max
+          }
+        },
         asLegacyTransaction: true,
         dynamicComputeUnitLimit: true,
-        dynamicSlippage: { maxBps: 300 }
+        dynamicSlippage: {
+          minBps: SLIPPAGE_BPS,
+          maxBps: 300 // 3% max slippage
+        }
       })
     })
 
-    if (!swapResponse.ok) throw new Error(`Swap failed: ${swapResponse.statusText}`)
+    if (!swapResponse.ok) {
+      const error = await swapResponse.json()
+      throw new Error(`Swap failed: ${JSON.stringify(error)}`)
+    }
+    
     const { swapTransaction } = await swapResponse.json()
-
     const tx = Transaction.from(Buffer.from(swapTransaction, 'base64'))
     return tx
   } catch (error) {
