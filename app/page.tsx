@@ -335,6 +335,12 @@ export default function Component() {
                 >
                   Bump Token 🚀
                 </Link>
+                <Link
+                  href="/fee-monitor"
+                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  Fee Monitor 📊
+                </Link>
               </div>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -469,9 +475,8 @@ export default function Component() {
                   value={personalMessage}
                   onChange={handleMessageChange}
                   maxLength={100}
-                  className={`w-full bg-black/30 border ${
-                    messageError ? 'border-red-500' : 'border-purple-500/20'
-                  } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
+                  className={`w-full bg-black/30 border ${messageError ? 'border-red-500' : 'border-purple-500/20'
+                    } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
                   placeholder="Add your personal message (Token Holder Exclusive)"
                 />
                 {messageError && (
