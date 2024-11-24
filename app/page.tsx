@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
-import { PublicKey, Transaction } from "@solana/web3.js"
+import { PublicKey } from "@solana/web3.js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
@@ -28,7 +28,13 @@ import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFil
 import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
-import { RENT_EXEMPTION, RENT_AFTER_FEE, TREASURY_WALLET, MIN_VIABLE_RECLAIM } from './utils/constants'
+import { RENT_EXEMPTION, RENT_AFTER_FEE, MIN_VIABLE_RECLAIM } from './utils/constants'
+import { ReclaimCard } from "@/components/ReclaimCard"
+import ReactDOM from 'react-dom/client'
+import html2canvas from 'html2canvas'
+import { checkTokenHolder } from './utils/token'
+import { StarField } from '@/components/StarField'
+import Link from 'next/link'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -71,6 +77,10 @@ export default function Component() {
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
   const [currentPage, setCurrentPage] = useState(1)
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>(DEFAULT_FILTER)
+  const [personalMessage, setPersonalMessage] = useState<string>("");
+  const [isCheckingTokenHolder, setIsCheckingTokenHolder] = useState(false)
+  const [isTokenHolder, setIsTokenHolder] = useState(false)
+  const [messageError, setMessageError] = useState<string>('')
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -78,69 +88,37 @@ export default function Component() {
   const { connection } = useConnection()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
+  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const message = e.target.value
+    if (message.length > 100) {
+      setMessageError('Message must be less than 100 characters')
+      return
+    }
+    setMessageError('')
+    setPersonalMessage(message)
+  }
 
   // Mounting effect
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Star field animation effect
   useEffect(() => {
-    if (!mounted) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let animationFrameId: number
-    const stars: Array<{ x: number, y: number, size: number, speed: number }> = []
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      initStars()
-    }
-
-    const initStars = () => {
-      stars.length = 0
-      const numberOfStars = Math.floor((canvas.width * canvas.height) / 4000)
-
-      for (let i = 0; i < numberOfStars; i++) {
-        stars.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          size: Math.random() * 2,
-          speed: Math.random() * 0.5 + 0.1
-        })
+    const checkHolder = async () => {
+      if (!publicKey || !connection) return;
+      setIsCheckingTokenHolder(true);
+      try {
+        const isHolder = await checkTokenHolder(publicKey);
+        setIsTokenHolder(isHolder);
+      } catch (error) {
+        logger.error('Failed to check token holder status:', error);
+      } finally {
+        setIsCheckingTokenHolder(false);
       }
-    }
+    };
 
-    const drawStars = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      stars.forEach(star => {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        ctx.beginPath()
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
-        ctx.fill()
-
-        star.y = (star.y + star.speed) % canvas.height
-      })
-
-      animationFrameId = requestAnimationFrame(drawStars)
-    }
-
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
-    drawStars()
-
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-      window.removeEventListener('resize', resizeCanvas)
-    }
-  }, [mounted])
+    checkHolder();
+  }, [publicKey, connection]);
 
   if (!mounted) {
     return null
@@ -237,109 +215,53 @@ export default function Component() {
   }
 
   const closeAccounts = async () => {
-    if (!publicKey || !sendTransaction || accounts.length === 0) {
-      trackEvent('close_accounts_failed', {
-        reason: 'wallet_not_connected_or_no_accounts',
-        timestamp: new Date().toISOString()
-      });
-      toast({
-        title: "Error",
-        description: "Wallet not connected or no accounts to close",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Track close start
-    trackEvent('close_accounts_clicked', {
-      wallet: publicKey.toString(),
-      accountCount: accounts.length,
-      timestamp: new Date().toISOString()
-    });
-
+    if (!publicKey || !connection || closing) return;
     setClosing(true);
-    let closedCount = 0;
-    let failedCount = 0;
-    let totalRentReclaimed = 0;
 
     try {
-      const closeableAccounts = accounts.filter(account => account.isCloseable);
+      const isHolder = await checkTokenHolder(publicKey);
+      setIsCheckingTokenHolder(false);
 
-      for (const account of closeableAccounts) {
-        try {
-          // Track individual account close attempt
-          trackEvent('close_account_attempt', {
-            wallet: publicKey.toString(),
-            accountType: account.type,
-            timestamp: new Date().toISOString()
-          });
-
-          logger.info('Attempting to close account', {
-            account: account.pubkey.toString()
-          });
-
-          const result = await closeTokenAccount(
-            connection,
-            publicKey,
-            account.pubkey,
-            sendTransaction
-          );
-
-          if (result.error) {
-            failedCount++;
-            trackEvent('close_account_failed', {
-              wallet: publicKey.toString(),
-              accountType: account.type,
-              error: result.error,
-              timestamp: new Date().toISOString()
-            });
-            toast({
-              title: "Failed to Close Account",
-              description: result.error,
-              variant: "destructive",
-            });
-            continue;
-          }
-
-          closedCount++;
-          totalRentReclaimed += RENT_AFTER_FEE;
-
-          // Remove closed account from state
-          setAccounts(prev => prev.filter(a => !a.pubkey.equals(account.pubkey)));
-
-          toast({
-            title: "Account Closed",
-            description: `Successfully closed account ${account.pubkey.toString().slice(0, 4)}...${account.pubkey.toString().slice(-4)}`,
-          });
-
-          // Add delay between transactions
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          trackEvent('close_account_success', {
-            wallet: publicKey.toString(),
-            accountType: account.type,
-            rentReclaimed: RENT_AFTER_FEE,
-            timestamp: new Date().toISOString()
-          });
-        } catch (error) {
-          failedCount++;
-          logger.error('Error closing account:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            tokenAccount: account.pubkey.toString()
-          });
-        }
+      for (const account of accounts.filter(a => a.isCloseable)) {
+        await closeTokenAccount(
+          connection,
+          publicKey,
+          account.pubkey,
+          sendTransaction,
+          isHolder
+        );
       }
+
+      // Save to museum if eligible
+      if (accounts.length > 0) {
+        await fetch('/api/reclaims', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            totalAccounts: accounts.filter(a => a.isCloseable).length,
+            totalReclaimed: getTotalReclaimAmount(accounts),
+            walletAddress: publicKey.toString(),
+            tokenHolder: isHolder,
+            personalMessage: isHolder ? personalMessage : undefined
+          })
+        });
+      }
+
+      toast({
+        title: "Success!",
+        description: `Closed ${accounts.filter(a => a.isCloseable).length} accounts`
+      });
+
+    } catch (error) {
+      logger.error('Error closing accounts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to close accounts. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setClosing(false);
-
-      // Track final results
-      trackEvent('close_accounts_complete', {
-        wallet: publicKey.toString(),
-        closedCount,
-        failedCount,
-        totalRentReclaimed,
-        timestamp: new Date().toISOString()
-      });
+      await scanAccounts();
     }
   };
 
@@ -380,11 +302,7 @@ export default function Component() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0"
-        style={{ background: 'radial-gradient(circle at center, #13023E 0%, #000000 100%)' }}
-      />
+      <StarField />
 
       {/* Cosmic Dust */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
@@ -394,15 +312,29 @@ export default function Component() {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/voidora-logo.svg"
-                  alt="Voidora Logo"
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-                <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/voidora-logo.svg"
+                    alt="Voidora Logo"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                  <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
+                </div>
+                <Link
+                  href="/museum"
+                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  Museum 🏛️
+                </Link>
+                <Link
+                  href="/bump"
+                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  Bump Token 🚀
+                </Link>
               </div>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -507,6 +439,47 @@ export default function Component() {
               </div>
             </motion.div>
 
+            <motion.div className="mb-8 space-y-4">
+              <h4 className="text-lg font-semibold text-purple-300">Token Holder Benefits</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                  <h5 className="font-medium text-purple-300 mb-2">Premium Display 💎</h5>
+                  <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
+                </div>
+                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees 🎉</h5>
+                  <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
+                </div>
+                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                  <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍️</h5>
+                  <p className="text-sm text-purple-300/70">Add personal messages to your reclaim cards</p>
+                </div>
+                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                  <h5 className="font-medium text-purple-300 mb-2">Priority Support 🎯</h5>
+                  <p className="text-sm text-purple-300/70">Direct access to developer support</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {isTokenHolder && (
+              <div className="mb-4">
+                <label className="block text-sm text-purple-300 mb-2">Personal Message</label>
+                <input
+                  type="text"
+                  value={personalMessage}
+                  onChange={handleMessageChange}
+                  maxLength={100}
+                  className={`w-full bg-black/30 border ${
+                    messageError ? 'border-red-500' : 'border-purple-500/20'
+                  } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
+                  placeholder="Add your personal message (Token Holder Exclusive)"
+                />
+                {messageError && (
+                  <p className="text-xs text-red-500 mt-1">{messageError}</p>
+                )}
+              </div>
+            )}
+
             {publicKey ? (
               <div className="space-y-8">
                 <div className="flex justify-center gap-4">
@@ -518,7 +491,8 @@ export default function Component() {
                     {loading ? "Scanning..." : "Scan Accounts"}
                   </Button>
                   <div className="text-sm text-purple-300/70 mb-2">
-                    A 5% platform fee applies to reclaimed SOL
+                    A {isTokenHolder ? '3' : '5'}% platform fee applies to reclaimed SOL
+                    {isCheckingTokenHolder && <span className="ml-2 animate-pulse">Checking status...</span>}
                   </div>
                   {accounts.length > 0 && (
                     <Button

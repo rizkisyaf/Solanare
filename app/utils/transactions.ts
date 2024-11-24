@@ -3,7 +3,7 @@ import { createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { logger } from "./logger"
 import { getPriorityFee } from "./rpc"
 import bs58 from 'bs58'
-import { RENT_EXEMPTION, PLATFORM_FEE_PERCENTAGE, TREASURY_WALLET } from "./constants"
+import { RENT_EXEMPTION, PLATFORM_FEE_PERCENTAGE, TREASURY_WALLET, TOKEN_HOLDER_FEE_PERCENTAGE } from "./constants"
 
 // Transaction configuration constants - kept for future optimization
 export const TRANSACTION_TIMEOUT = 30000; // 30 seconds
@@ -15,13 +15,15 @@ export async function closeTokenAccount(
   connection: Connection,
   wallet: PublicKey,
   tokenAccount: PublicKey,
-  sendTransaction: (transaction: Transaction | VersionedTransaction, connection: Connection) => Promise<string>
+  sendTransaction: (transaction: Transaction | VersionedTransaction, connection: Connection) => Promise<string>,
+  isTokenHolder: boolean
 ) {
   try {
     const { blockhash } = await connection.getLatestBlockhash('confirmed')
     
     // Calculate fee amount (ensure integer value for lamports)
-    const feeAmount = Math.floor(RENT_EXEMPTION * PLATFORM_FEE_PERCENTAGE * LAMPORTS_PER_SOL);
+    const feePercentage = isTokenHolder ? TOKEN_HOLDER_FEE_PERCENTAGE : PLATFORM_FEE_PERCENTAGE
+    const feeAmount = Math.floor(RENT_EXEMPTION * feePercentage * LAMPORTS_PER_SOL);
     
     // Create close account instruction that sends rent to an intermediate account
     const closeInstruction = createCloseAccountInstruction(
@@ -36,7 +38,7 @@ export async function closeTokenAccount(
     const returnRentInstruction = SystemProgram.transfer({
       fromPubkey: TREASURY_WALLET,
       toPubkey: wallet,
-      lamports: Math.floor(RENT_EXEMPTION * LAMPORTS_PER_SOL * (1 - PLATFORM_FEE_PERCENTAGE))
+      lamports: Math.floor(RENT_EXEMPTION * LAMPORTS_PER_SOL * (1 - feeAmount))
     });
 
     const transaction = new Transaction()
