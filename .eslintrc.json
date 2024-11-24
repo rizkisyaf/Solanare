@@ -1,13 +1,11 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"],
+  "extends": ["next/core-web-vitals"],
   "rules": {
     "@typescript-eslint/no-unused-vars": ["warn", {
-      "varsIgnorePattern": "^(Transaction|ComputeBudgetProgram|TransactionMessage|ASSOCIATED_TOKEN_PROGRAM_ID|getAssociatedTokenAddress|getPriorityFee|bs58)$",
-      "vars": "all",
-      "args": "after-used",
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^(Transaction|ComputeBudgetProgram|TransactionMessage|ASSOCIATED_TOKEN_PROGRAM_ID|getAssociatedTokenAddress|getPriorityFee|bsReact)$",
       "ignoreRestSiblings": true
     }],
-    "@typescript-eslint/no-require-imports": "off",
-    "@typescript-eslint/no-explicit-any": "off"
+    "prefer-const": "error"
   }
 }

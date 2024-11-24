@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { BumpRecord } from '@/app/types/bump'
 
 // In-memory fallback if KV isn't available
-let localBumps: BumpRecord[] = []
+const localBumps: BumpRecord[] = []
 
 export async function GET() {
   try {

@@ -18,7 +18,7 @@
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
     "@sentry/browser": "^7.91.0",
-    "@sentry/nextjs": "^8.40.0",
+    "@sentry/nextjs": "^7.91.0",
     "@sentry/react": "^7.91.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.23",
