@@ -70,9 +70,24 @@ export default function BumpPage() {
             Sentry.setUser({ id: publicKey.toString() });
 
             const tx = await createBumpTransaction(connection, publicKey);
-            const signature = await sendTransaction(tx, connection);
+            const latestBlockhash = await connection.getLatestBlockhash('finalized');
+            tx.recentBlockhash = latestBlockhash.blockhash;
+            tx.feePayer = publicKey;
 
-            await connection.confirmTransaction(signature);
+            const signature = await sendTransaction(tx, connection, {
+                skipPreflight: true,
+                maxRetries: 3
+            });
+
+            const confirmation = await connection.confirmTransaction({
+                signature,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+            });
+
+            if (confirmation.value.err) {
+                throw new Error('Transaction failed');
+            }
 
             const now = Date.now();
             localStorage.setItem(`lastBump_${publicKey.toString()}`, now.toString());
