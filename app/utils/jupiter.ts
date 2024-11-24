@@ -7,7 +7,7 @@ const SLIPPAGE_BPS = 100
 const HOLDER_COOLDOWN = 30 * 60 * 1000 // 30 minutes in ms
 const NORMAL_COOLDOWN = 60 * 60 * 1000 // 60 minutes in ms
 const REFERRAL_ACCOUNT = "FMeQzCuuqWvqFHEbvYJbdZBJa4fqbmwBjDbLKPBuyTjF"
-const FEE_BPS = 500
+const PLATFORM_FEE_BPS = 20 // 0.2% fee
 
 export const jitoTipAccounts = [
   'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY',
@@ -26,9 +26,9 @@ export async function createBumpTransaction(
       throw new Error(`Minimum amount is ${MIN_SOL_AMOUNT} SOL`);
     }
 
-    // Get Jupiter quote
+    // Get Jupiter quote with platform fee
     const quoteResponse = await fetch(
-      `${JUPITER_QUOTE_API}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${SOLANARE_TOKEN}&amount=${amount * 1e9}&slippageBps=${SLIPPAGE_BPS}&feeBps=${FEE_BPS}`
+      `${JUPITER_QUOTE_API}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=${SOLANARE_TOKEN}&amount=${amount * 1e9}&slippageBps=${SLIPPAGE_BPS}&platformFeeBps=${PLATFORM_FEE_BPS}`
     )
     
     if (!quoteResponse.ok) throw new Error(`Quote failed: ${quoteResponse.statusText}`)
@@ -44,18 +44,9 @@ export async function createBumpTransaction(
         wrapAndUnwrapSol: true,
         asLegacyTransaction: true,
         feeAccount: REFERRAL_ACCOUNT,
-        prioritizationFeeLamports: {
-          priorityLevelWithMaxLamports: {
-            priorityLevel: "high",
-            maxLamports: 5000000
-          }
-        },
+        prioritizationFeeLamports: "auto",
         dynamicComputeUnitLimit: true,
-        skipUserAccountsRpcCalls: false,
-        dynamicSlippage: {
-          minBps: SLIPPAGE_BPS,
-          maxBps: 300
-        }
+        skipUserAccountsRpcCalls: false
       })
     })
 
