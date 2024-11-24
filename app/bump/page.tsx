@@ -31,6 +31,7 @@ export default function BumpPage() {
     const { trackEvent } = useAnalytics()
     const [bumpHistory, setBumpHistory] = useState<BumpRecord[]>([])
     const [loadingHistory, setLoadingHistory] = useState(true)
+    const [bumpAmount, setBumpAmount] = useState<number>(0.01)
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -62,14 +63,14 @@ export default function BumpPage() {
         }
     }
 
-    const handleBump = async () => {
+    const handleBump = async (amount: number) => {
         if (!publicKey || loading || Date.now() - lastBump < getCooldownTime(isHolder)) return;
 
         setLoading(true);
         try {
             Sentry.setUser({ id: publicKey.toString() });
 
-            const tx = await createBumpTransaction(connection, publicKey);
+            const tx = await createBumpTransaction(connection, publicKey, amount);
             const latestBlockhash = await connection.getLatestBlockhash('finalized');
             tx.recentBlockhash = latestBlockhash.blockhash;
             tx.feePayer = publicKey;
@@ -197,15 +198,28 @@ export default function BumpPage() {
                         <div className="space-y-8">
                             {publicKey ? (
                                 <>
-                                    <Button
-                                        onClick={handleBump}
-                                        disabled={!canBump}
-                                        className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-3 rounded-full"
-                                    >
-                                        {loading ? "Bumping..." :
-                                            !canBump ? `Next bump in ${Math.ceil(timeUntilNextBump / 60000)}m` :
-                                                "Bump $SOLANARE 🚀"}
-                                    </Button>
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={bumpAmount}
+                                                onChange={(e) => setBumpAmount(Math.max(0.01, Number(e.target.value)))}
+                                                className="w-24 px-3 py-2 bg-purple-900/20 border border-purple-500/20 rounded-lg text-purple-300 focus:outline-none focus:border-purple-500"
+                                            />
+                                            <span className="text-purple-300">SOL</span>
+                                        </div>
+                                        <Button
+                                            onClick={() => handleBump(bumpAmount)}
+                                            disabled={!canBump}
+                                            className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-3 rounded-full"
+                                        >
+                                            {loading ? "Bumping..." :
+                                                !canBump ? `Next bump in ${Math.ceil(timeUntilNextBump / 60000)}m` :
+                                                    "Bump $SOLANARE 🚀"}
+                                        </Button>
+                                    </div>
 
                                     {!isHolder && (
                                         <p className="text-sm text-purple-300/70">
