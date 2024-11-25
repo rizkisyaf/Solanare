@@ -16,9 +16,9 @@ export function ReclaimCard({ totalAccounts, totalReclaimed, walletAddress, onSh
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-gradient-to-br from-purple-900/50 to-black/50 p-6 rounded-xl border border-purple-500/20"
+      className="bg-gradient-to-br from-purple-900/50 to-black/50 p-4 md:p-6 rounded-xl border border-purple-500/20 w-full"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-bold text-purple-300">Reclaim Summary</h3>
           <Button
@@ -34,13 +34,13 @@ export function ReclaimCard({ totalAccounts, totalReclaimed, walletAddress, onSh
         <div className="space-y-4">
           <div>
             <p className="text-sm text-purple-300/70">Total Accounts Closed</p>
-            <p className="text-3xl font-bold text-purple-300">{totalAccounts}</p>
+            <p className="text-2xl md:text-3xl font-bold text-purple-300">{totalAccounts}</p>
           </div>
 
           <div>
             <p className="text-sm text-purple-300/70">Total SOL Reclaimed</p>
-            <p className="text-3xl font-bold text-green-400">+{totalReclaimed.toFixed(4)} SOL</p>
-            <p className="text-sm text-purple-300/70">≈ ${(totalReclaimed * 150).toFixed(2)} USD</p>
+            <p className="text-2xl md:text-3xl font-bold text-green-400">+{totalReclaimed.toFixed(4)} SOL</p>
+            <p className="text-xs md:text-sm text-purple-300/70">≈ ${(totalReclaimed * 150).toFixed(2)} USD</p>
           </div>
 
           <div>

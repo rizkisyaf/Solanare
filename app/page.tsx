@@ -317,48 +317,79 @@ export default function Component() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
 
       {/* Navbar - fixed at top */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20 safe-top">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between h-14 md:h-16">
+            <div className="flex items-center gap-2 md:gap-6">
               <div className="flex items-center gap-2">
                 <Image
                   src="/voidora-logo.svg"
                   alt="Voidora Logo"
-                  width={32}
-                  height={32}
-                  className="rounded-full"
+                  width={28}
+                  height={28}
+                  className="rounded-full md:w-8 md:h-8"
                 />
-                <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
+                <div className="text-lg md:text-xl font-bold text-purple-400">Solanare</div>
               </div>
-              <Link
-                href="/museum"
-                className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-              >
-                Museum 🏛️
-              </Link>
-              <Link
-                href="/bump"
-                className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-              >
-                Bump Token 🚀
-              </Link>
+              <div className="hidden md:flex items-center gap-4">
+                <Link
+                  href="/museum"
+                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  Museum 🏛️
+                </Link>
+                <Link
+                  href="/bump"
+                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  Bump 🚀
+                </Link>
+              </div>
             </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full" />
+              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-4 !py-2 !text-sm md:!text-base" />
             </motion.div>
           </div>
         </div>
       </nav>
 
+      {/* Add mobile navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black/50 backdrop-blur-lg border-t border-purple-500/20 safe-bottom">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-around h-16">
+            <Link
+              href="/"
+              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
+            >
+              <span className="text-lg">🏠</span>
+              <span className="text-xs">Home</span>
+            </Link>
+            <Link
+              href="/museum"
+              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
+            >
+              <span className="text-lg">🏛️</span>
+              <span className="text-xs">Museum</span>
+            </Link>
+            <Link
+              href="/bump"
+              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
+            >
+              <span className="text-lg">🚀</span>
+              <span className="text-xs">Bump</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Main scrollable content */}
-      <main className="flex-1 overflow-y-auto z-20">
-        <div className="container max-w-6xl mx-auto px-4 pt-24 pb-24">
-          <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center">
+      <main className="flex-1 overflow-y-auto z-20 pb-20 md:pb-0">
+        <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-24">
+          <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -392,7 +423,7 @@ export default function Component() {
               </motion.div>
             )}
 
-            <h1 className="text-7xl font-bold mb-6 leading-tight tracking-tight">
+            <h1 className="text-7xl font-bold mb-6 leading-tight tracking-tight text-center">
               <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
                 Void. Vanish. Value.
               </span>
@@ -409,17 +440,22 @@ export default function Component() {
               className="mb-12 p-4 bg-purple-900/20 border border-purple-500/20 rounded-lg max-w-xl mx-auto"
             >
               <div className="text-center space-y-3">
-                <h3 className="text-xl font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                <h3 className="text-xl md:text-2xl font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
                   $SOLANARE Token
                 </h3>
-                <div className="flex items-center justify-center gap-2">
-                  <code className="bg-black/30 px-3 py-1 rounded-lg text-purple-300 font-mono text-sm">
-                    14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
-                  </code>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <div className="w-full sm:w-auto group relative">
+                    <code className="block w-full sm:w-auto bg-black/30 px-3 py-2 rounded-lg text-purple-300 font-mono text-xs sm:text-sm break-all sm:break-normal">
+                      14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
+                    </code>
+                    <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/5 transition-colors rounded-lg" />
+                  </div>
+                  
+                  {/* Desktop Copy Button */}
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                    className="hidden md:flex h-8 w-8 text-purple-400 hover:text-purple-300 shrink-0"
                     onClick={() => {
                       navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
                       toast({
@@ -443,8 +479,48 @@ export default function Component() {
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>
                   </Button>
+
+                  {/* Mobile Actions */}
+                  <div className="flex items-center gap-2 sm:hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                      onClick={() => {
+                        navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
+                        toast({
+                          title: "Address Copied",
+                          description: "Token address copied to clipboard",
+                        })
+                      }}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </Button>
+                    <Link href="/bump">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                      >
+                        <span className="text-lg">🚀</span>
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <p className="text-sm text-purple-300/70">
+                <p className="text-xs sm:text-sm text-purple-300/70">
                   Now available on Moonshot 🚀
                 </p>
               </div>
@@ -580,7 +656,7 @@ export default function Component() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20"
+                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full"
                     >
                       {paginatedAccounts.map((account) => (
                         <Card
@@ -729,16 +805,16 @@ export default function Component() {
       {/* Fixed footer */}
       <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-purple-300/50">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
+            <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
               <p>Built with ❤️ for the Solana community</p>
             </div>
             
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
               <a
                 href="mailto:support@solana.reclaims"
-                className="text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
+                className="text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
                 support@solana.reclaims
               </a>
@@ -747,12 +823,13 @@ export default function Component() {
                 href="https://twitter.com/kisra_fistya"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
+                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-4 sm:w-4 fill-current">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
-                @kisra_fistya
+                <span className="hidden sm:inline">@kisra_fistya</span>
+                <span className="inline sm:hidden">@kisra...</span>
               </a>
             </div>
           </div>

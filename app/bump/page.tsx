@@ -159,50 +159,41 @@ export default function BumpPage() {
             <div className="relative z-10 flex flex-col min-h-screen">
                 <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between h-16">
-                            <div className="flex items-center gap-6">
+                        <div className="flex items-center justify-between h-14 md:h-16">
+                            <div className="flex items-center gap-2 md:gap-6">
                                 <div className="flex items-center gap-2">
-                                    <Image
-                                        src="/voidora-logo.svg"
-                                        alt="Voidora Logo"
-                                        width={32}
-                                        height={32}
-                                    />
-                                    <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
+                                    <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                                        <Image
+                                            src="/voidora-logo.svg"
+                                            alt="Voidora Logo"
+                                            width={28}
+                                            height={28}
+                                            className="w-6 h-6 md:w-8 md:h-8"
+                                        />
+                                        <div className="text-lg md:text-xl font-bold text-purple-400">Solanare</div>
+                                    </Link>
                                 </div>
-                                <Link
-                                    href="/"
-                                    className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                                >
-                                    ← Back to Void
-                                </Link>
                             </div>
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.2 }}
-                            >
-                                <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full" />
-                            </motion.div>
+                            <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-3 !py-1.5 !text-sm md:!text-base md:!px-4 md:!py-2" />
                         </div>
                     </div>
                 </nav>
 
-                <main className="flex-1 container mx-auto px-4 pt-24">
+                <main className="flex-1 container mx-auto px-4 pt-20 md:pt-24">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="max-w-2xl mx-auto text-center"
                     >
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-6">
+                        <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-4 md:mb-6">
                             $SOLANARE Token Bumper
                         </h1>
 
                         {/* Token info and bump button implementation */}
-                        <div className="space-y-8">
+                        <div className="space-y-6 md:space-y-8">
                             {publicKey ? (
                                 <>
-                                    <div className="flex flex-col items-center gap-4">
+                                    <div className="flex flex-col items-center gap-3 md:gap-4">
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="number"
@@ -210,14 +201,14 @@ export default function BumpPage() {
                                                 step="0.01"
                                                 value={bumpAmount}
                                                 onChange={(e) => setBumpAmount(Math.max(0.01, Number(e.target.value)))}
-                                                className="w-24 px-3 py-2 bg-purple-900/20 border border-purple-500/20 rounded-lg text-purple-300 focus:outline-none focus:border-purple-500"
+                                                className="w-20 md:w-24 px-2 md:px-3 py-1.5 md:py-2 bg-purple-900/20 border border-purple-500/20 rounded-lg text-purple-300 focus:outline-none focus:border-purple-500 text-sm md:text-base"
                                             />
-                                            <span className="text-purple-300">SOL</span>
+                                            <span className="text-purple-300 text-sm md:text-base">SOL</span>
                                         </div>
                                         <Button
                                             onClick={() => handleBump(bumpAmount)}
                                             disabled={!canBump}
-                                            className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-3 rounded-full"
+                                            className="w-full sm:w-auto bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 md:px-8 py-2 md:py-3 rounded-full text-sm md:text-base"
                                         >
                                             {loading ? "Bumping..." :
                                                 !canBump ? `Next bump in ${Math.ceil(timeUntilNextBump / 60000)}m` :
@@ -226,37 +217,37 @@ export default function BumpPage() {
                                     </div>
 
                                     {!isHolder && (
-                                        <p className="text-sm text-purple-300/70">
+                                        <p className="text-xs md:text-sm text-purple-300/70">
                                             Hold $SOLANARE tokens to reduce cooldown time
                                         </p>
                                     )}
                                 </>
                             ) : (
-                                <p className="text-purple-300/70">Connect wallet to start bumping</p>
+                                <p className="text-sm md:text-base text-purple-300/70">Connect wallet to start bumping</p>
                             )}
                         </div>
 
-                        <div className="mt-16">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-6">
+                        <div className="mt-12 md:mt-16">
+                            <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-4 md:mb-6">
                                 Recent Bumps
                             </h2>
 
                             {!loadingHistory && bumpHistory && bumpHistory.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 max-w-4xl mx-auto">
                                     {bumpHistory.map((bump) => (
                                         <motion.div
                                             key={bump.id}
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className={`
-          p-4 rounded-lg backdrop-blur-sm
+          p-3 md:p-4 rounded-lg backdrop-blur-sm
           ${bump.isHolder
                                                 ? 'bg-purple-900/20 border-2 border-purple-500/50'
                                                 : 'bg-black/30 border border-purple-500/20'}
         `}
                                         >
                                             <div className="flex items-center justify-between mb-2">
-                                                <div className="text-sm text-purple-300/70">
+                                                <div className="text-xs md:text-sm text-purple-300/70">
                                                     {new Date(bump.timestamp).toLocaleString()}
                                                 </div>
                                                 {bump.isHolder && (
@@ -265,7 +256,7 @@ export default function BumpPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="text-sm font-mono text-purple-300">
+                                            <div className="text-xs md:text-sm font-mono text-purple-300">
                                                 {bump.walletAddress.slice(0, 4)}...{bump.walletAddress.slice(-4)}
                                             </div>
                                             <a
@@ -280,7 +271,7 @@ export default function BumpPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-purple-300/70">No bumps yet</p>
+                                <p className="text-sm text-purple-300/70">No bumps yet</p>
                             )}
                         </div>
                     </motion.div>

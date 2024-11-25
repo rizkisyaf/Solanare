@@ -14,6 +14,29 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Solanare - Solana Token Account Manager",
   description: "Clean up unused Solana token accounts and reclaim SOL",
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+    other: {
+      rel: 'apple-touch-icon-precomposed',
+      url: '/apple-touch-icon-precomposed.png',
+    },
+  },
+  verification: {
+    google: 'your-google-verification-code',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   keywords: ["Solana", "Blockchain", "Crypto", "Token", "Web3"],
   metadataBase: new URL('https://solanare.claims'),
   openGraph: {
@@ -24,12 +47,10 @@ export const metadata: Metadata = {
     locale: 'en_US',
     type: 'website',
     images: [{
-      url: 'https://solanare.claims/og-logo.png',
+      url: '/og-logo.png',
       width: 1200,
       height: 630,
-      alt: 'Solanare - Solana Token Account Manager',
-      type: 'image/png',
-      secureUrl: 'https://solanare.claims/og-logo.png',
+      alt: 'Solanare Logo',
     }],
   },
   twitter: {
@@ -68,6 +89,7 @@ export default function RootLayout({
           src={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL}
           data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
         />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ErrorBoundary>

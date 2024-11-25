@@ -67,11 +67,11 @@ export default function MuseumPage() {
       }
 
       // Share for all users
-      const blob = await new Promise<Blob>((resolve) => 
+      const blob = await new Promise<Blob>((resolve) =>
         canvas.toBlob((blob) => resolve(blob!))
       )
       const file = new File([blob], 'reclaim.png', { type: 'image/png' })
-      
+
       if (navigator.share) {
         await navigator.share({
           files: [file],
@@ -101,7 +101,7 @@ export default function MuseumPage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
       <StarField />
-      
+
       {/* Cosmic Dust */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
 
@@ -110,32 +110,22 @@ export default function MuseumPage() {
         {/* Navbar - copied from page.tsx */}
         <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-6">
+            <div className="flex items-center justify-between h-14 md:h-16">
+              <div className="flex items-center gap-2 md:gap-6">
                 <div className="flex items-center gap-2">
-                  <Image
-                    src="/voidora-logo.svg"
-                    alt="Voidora Logo"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
-                  <div className="text-xl font-bold text-purple-400">Solanare.claims</div>
+                  <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Image
+                      src="/voidora-logo.svg"
+                      alt="Voidora Logo"
+                      width={28}
+                      height={28}
+                      className="w-6 h-6 md:w-8 md:h-8"
+                    />
+                    <div className="text-lg md:text-xl font-bold text-purple-400">Solanare</div>
+                  </Link>
                 </div>
-                <Link
-                  href="/"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  ← Back to Void
-                </Link>
               </div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full" />
-              </motion.div>
+              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-3 !py-1.5 !text-sm md:!text-base md:!px-4 md:!py-2" />
             </div>
           </div>
         </nav>
@@ -159,8 +149,8 @@ export default function MuseumPage() {
             <div className="relative">
               {/* Spotlight Effects */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(88,28,135,0.15),transparent_50%)]" />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 relative px-4 md:px-0">
                 {reclaims.map((reclaim, index) => (
                   <motion.div
                     key={reclaim.id}
@@ -169,8 +159,8 @@ export default function MuseumPage() {
                     transition={{ delay: index * 0.1 }}
                     className={`
                       relative backdrop-blur-sm
-                      ${reclaim.tokenHolder 
-                        ? 'bg-purple-900/20 border-2 border-purple-500/50 shadow-lg shadow-purple-500/20' 
+                      ${reclaim.tokenHolder
+                        ? 'bg-purple-900/20 border-2 border-purple-500/50 shadow-lg shadow-purple-500/20'
                         : 'bg-black/30 border border-purple-500/20'}
                       rounded-xl overflow-hidden
                       transform hover:scale-105 transition-all duration-300
