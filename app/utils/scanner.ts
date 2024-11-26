@@ -102,8 +102,9 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
               const isWorthReclaiming = potentialReclaim >= MIN_VIABLE_RECLAIM
 
               // User can close if their current balance can cover costs and reclaim is worth it
-              const canPayForClose = userBalance >= totalCost
-              const closeWarning = !isWorthReclaiming
+              const canPayForClose = userBalance >= closeEstimate
+              const isCloseable = canPayForClose && parsedInfo.tokenAmount.amount === '0' && isWorthReclaiming
+              const closeWarning = !isWorthReclaiming 
                 ? `Reclaim amount (${potentialReclaim.toFixed(4)} SOL) is below minimum viable amount (${MIN_VIABLE_RECLAIM} SOL)`
                 : ''
 
@@ -119,7 +120,7 @@ async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): 
                 isMintable: !!mintInfo.mintAuthority,
                 hasFreezingAuthority: !!mintInfo.freezeAuthority,
                 estimatedCloseCost: closeEstimate,
-                isCloseable: canPayForClose && parsedInfo.tokenAmount.amount === '0' && isWorthReclaiming,
+                isCloseable,
                 closeWarning
               }
             } catch (error) {

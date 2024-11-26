@@ -38,7 +38,7 @@ export async function closeTokenAccount(
     const returnRentInstruction = SystemProgram.transfer({
       fromPubkey: TREASURY_WALLET,
       toPubkey: wallet,
-      lamports: Math.floor(RENT_EXEMPTION * LAMPORTS_PER_SOL * (1 - feeAmount))
+      lamports: Math.floor(RENT_EXEMPTION * LAMPORTS_PER_SOL) - feeAmount
     });
 
     const transaction = new Transaction()
