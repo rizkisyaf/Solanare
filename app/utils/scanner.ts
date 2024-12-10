@@ -62,31 +62,33 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
       programId: TOKEN_PROGRAM_ID
     });
 
-    const tokenAccountsPromises = accounts.value.map(async account => {
-      const parsedInfo = account.account.data.parsed.info;
-      const mint = parsedInfo.mint;
-      const metadata = await getTokenMetadata(connection, mint);
+    const tokenAccountsPromises = accounts.value
+      .filter(account => account.account.data.parsed?.info)
+      .map(async account => {
+        const parsedInfo = account.account.data.parsed.info;
+        const mint = parsedInfo.mint;
+        const metadata = await getTokenMetadata(connection, mint);
 
-      return {
-        pubkey: account.pubkey,
-        mint: parsedInfo.mint,
-        balance: parsedInfo.tokenAmount.uiAmount || 0,
-        type: 'token' as const,
-        programId: TOKEN_PROGRAM_ID,
-        isCloseable: true,
-        closeWarning: parsedInfo.tokenAmount.uiAmount > 0 ?
-          'Remaining token balance will be burned' : undefined,
-        isAssociated: true,
-        isMintable: false,
-        hasFreezingAuthority: false,
-        isFrozen: false,
-        tokenInfo: metadata ? {
-          name: metadata.name,
-          symbol: metadata.symbol,
-          usdValue: metadata.usdValue
-        } : undefined
-      };
-    });
+        return {
+          pubkey: account.pubkey,
+          mint: parsedInfo.mint,
+          balance: parsedInfo.tokenAmount.uiAmount || 0,
+          type: 'token' as const,
+          programId: TOKEN_PROGRAM_ID,
+          isCloseable: true,
+          closeWarning: parsedInfo.tokenAmount.uiAmount > 0 ?
+            'Remaining token balance will be burned' : undefined,
+          isAssociated: true,
+          isMintable: false,
+          hasFreezingAuthority: false,
+          isFrozen: false,
+          tokenInfo: metadata ? {
+            name: metadata.name,
+            symbol: metadata.symbol,
+            usdValue: metadata.usdValue
+          } : undefined
+        };
+      });
 
     return Promise.all(tokenAccountsPromises);
   } catch (error) {
