@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { logger } from "./logger"
-import { withFallback } from "./rpc"
+import { getTokenMetadata, withFallback } from "./rpc"
 import { RENT_EXEMPTION } from "./constants"
 
 interface BaseAccount {
@@ -41,14 +41,6 @@ interface UnknownAccount extends BaseAccount {
   type: 'unknown'
 }
 
-interface TokenMetadata {
-  name: string
-  symbol: string
-  logoURI?: string
-  usdValue?: number
-  decimals: number
-  address: string
-}
 
 interface ScanResults {
   tokenAccounts: TokenAccount[]
@@ -73,7 +65,7 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
 
     const tokenAccountsPromises = accounts.value.map(async account => {
       const parsedInfo = account.account.data.parsed.info;
-      const metadata = await getTokenMetadata(parsedInfo.mint);
+      const metadata = await getTokenMetadata(connection, parsedInfo.mint);
 
       return {
         pubkey: account.pubkey,
@@ -240,45 +232,6 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
   return 'high'
 }
 
-async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
-  try {
-    const url = `https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'my-id',
-        method: 'searchAssets',
-        params: {
-          ownerAddress: null,
-          grouping: ['mint'],
-          mintAddress: mint,
-          page: 1,
-          limit: 1
-        }
-      })
-    });
-
-    if (!response.ok) return null;
-    const { result } = await response.json();
-    
-    if (!result?.items?.[0]) return null;
-    const asset = result.items[0];
-
-    return {
-      name: asset.content?.metadata?.name || 'Unknown',
-      symbol: asset.content?.metadata?.symbol || 'Unknown',
-      logoURI: asset.content?.links?.image || asset.content?.files?.[0]?.uri || null,
-      usdValue: asset.token_info?.price_info?.price_per_token || 0,
-      decimals: asset.content?.metadata?.decimals || 0,
-      address: mint
-    };
-  } catch (error) {
-    logger.error('Error fetching token metadata', { error, mint });
-    return null;
-  }
-}
 
 export async function scanAllAccounts(connection: Connection, publicKey: PublicKey): Promise<ScanResults> {
   logger.info('Starting comprehensive account scan', { publicKey: publicKey.toString() });

@@ -1,3 +1,4 @@
+import { RENT_AFTER_FEE } from "@/app/utils/constants"
 import { PublicKey } from "@solana/web3.js"
 import Image from 'next/image'
 
@@ -22,9 +23,17 @@ interface TokenAccountsTableProps {
 
 export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalance }: TokenAccountsTableProps) {
   const hasEnoughSol = userSolBalance >= 0.01;
+  const totalReclaimableSol = accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE;
 
   return (
     <div className="w-full overflow-x-auto">
+      <div className="flex items-center gap-2 mb-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-purple-300">Found {accounts.length} Accounts</span>
+        <span className="text-green-400 font-semibold ml-2">
+          (+{totalReclaimableSol.toFixed(4)} SOL)
+        </span>
+      </div>
       {!hasEnoughSol && (
         <div className="mb-4 p-4 bg-red-500/20 text-red-300 rounded-lg">
           Warning: You need at least 0.01 SOL in your wallet for transaction fees

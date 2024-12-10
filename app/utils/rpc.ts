@@ -88,3 +88,36 @@ export async function getPriorityFee(connection: Connection): Promise<number> {
     throw error;
   }
 }
+
+export async function getTokenMetadata(connection: Connection, mint: string) {
+  try {
+    const response = await fetch('https://mainnet.helius-rpc.com/?api-key=' + process.env.NEXT_PUBLIC_HELIUS_API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'helius-metadata',
+        method: 'getAsset',
+        params: {
+          id: mint,
+          displayOptions: {
+            showFungible: true
+          }
+        },
+      }),
+    });
+    
+    const { result: asset } = await response.json();
+    
+    return {
+      name: asset.token_info?.name || asset.content?.metadata?.name || 'Unknown',
+      symbol: asset.token_info?.symbol || asset.content?.metadata?.symbol || 'Unknown',
+      logoURI: asset.content?.links?.image || asset.content?.files?.[0]?.uri || null,
+      usdValue: asset.token_info?.price_info?.price_per_token || 0,
+      decimals: asset.token_info?.decimals || 0
+    };
+  } catch (error) {
+    logger.error('Error fetching token metadata', { error, mint });
+    return null;
+  }
+}
