@@ -35,13 +35,13 @@ export function ScanResultsPanel({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed bottom-5 right-0 z-[99999] w-full md:w-[600px] bg-black/80 backdrop-blur-sm"
+        className="fixed bottom-0 right-0 z-[99999] w-full md:w-[600px] lg:w-[700px] bg-black/80 backdrop-blur-sm safe-bottom"
         initial={{ y: "100%" }}
         animate={{ y: isOpen ? "0%" : "calc(100% - 48px)" }}
         transition={{ type: "spring", bounce: 0.2 }}
       >
-        <div className="flex flex-col max-h-[80vh]">
-          <div className="bg-purple-950/95 p-4 border-b border-purple-500/20 cursor-pointer"
+        <div className="flex flex-col max-h-[90vh] md:max-h-[80vh]">
+          <div className="bg-purple-950/95 p-3 md:p-4 border-b border-purple-500/20 cursor-pointer"
                onClick={onToggle}>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export function ScanResultsPanel({
                     <path d="m18 15-6-6-6 6"/>
                   </svg>
                 </motion.div>
-                <h3 className="text-xl font-semibold text-purple-300">
+                <h3 className="text-lg md:text-xl font-semibold text-purple-300">
                   Found {accounts.length} Accounts
                 </h3>
               </div>
@@ -73,9 +73,9 @@ export function ScanResultsPanel({
                   e.stopPropagation();
                   onCloseAll();
                 }}
-                className="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg"
+                className="text-sm md:text-base bg-red-500/20 hover:bg-red-500/30 text-red-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg"
               >
-                Close All Accounts
+                Close All
               </button>
             </div>
           </div>

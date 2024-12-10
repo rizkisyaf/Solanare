@@ -25,71 +25,73 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
   const totalReclaimableSol = accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE;
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="flex items-center gap-2 mb-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-purple-300">Found {accounts.length} Accounts</span>
-        <span className="text-green-400 font-semibold ml-2">
+    <div className="w-full overflow-x-auto px-2 md:px-4">
+      <div className="flex items-center gap-2 mb-4 p-3 md:p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+        <div className="w-2 md:w-3 h-2 md:h-3 bg-green-500 animate-pulse" />
+        <span className="text-sm md:text-base text-purple-300">Found {accounts.length} Accounts</span>
+        <span className="text-sm md:text-base text-green-400 font-semibold ml-2">
           (+{totalReclaimableSol.toFixed(4)} SOL)
         </span>
       </div>
       {!hasEnoughSol && (
-        <div className="mb-4 p-4 bg-red-500/20 text-red-300 rounded-lg">
+        <div className="mb-4 p-3 md:p-4 bg-red-500/20 text-red-300 text-sm md:text-base rounded-lg">
           Warning: You need at least 0.01 SOL in your wallet for transaction fees
         </div>
       )}
       
-      <table className="w-full text-left text-purple-300">
-        <thead>
-          <tr className="border-b border-purple-500/20">
-            <th className="p-4">Token</th>
-            <th className="p-4">Balance</th>
-            <th className="p-4">Value</th>
-            <th className="p-4">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((account) => (
-            <tr key={account.pubkey.toString()} className="border-b border-purple-500/10">
-              <td className="p-4">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium">
-                      {account.mint === 'So11111111111111111111111111111111111111112' ? 'SOL' :
-                       account.mint === 'So11111111111111111111111111111111111111113' ? 'WSOL' :
-                       account.tokenInfo?.symbol || 'Unknown'}
-                    </p>
-                    <p className="text-xs text-purple-300/50">
-                      {account.mint === 'So11111111111111111111111111111111111111112' ? 'Solana' :
-                       account.mint === 'So11111111111111111111111111111111111111113' ? 'Wrapped SOL' :
-                       account.tokenInfo?.name || 'Unknown Token'}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td className="p-4">{account.balance}</td>
-              <td className="p-4">
-                {account.tokenInfo?.usdValue ? 
-                  `$${(account.balance * account.tokenInfo.usdValue).toFixed(2)}` : 
-                  '-'
-                }
-              </td>
-              <td className="p-4">
-                <button
-                  onClick={() => onClose(account.pubkey)}
-                  disabled={isClosing || !hasEnoughSol}
-                  className="px-4 py-2 bg-purple-500/20 rounded-lg hover:bg-purple-500/30 disabled:opacity-50"
-                >
-                  Close Account
-                </button>
-                {account.closeWarning && (
-                  <p className="text-xs text-yellow-300 mt-1">{account.closeWarning}</p>
-                )}
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-purple-300">
+          <thead>
+            <tr className="border-b border-purple-500/20">
+              <th className="p-2 md:p-4 text-sm md:text-base">Token</th>
+              <th className="p-2 md:p-4 text-sm md:text-base">Balance</th>
+              <th className="p-2 md:p-4 text-sm md:text-base">Value</th>
+              <th className="p-2 md:p-4 text-sm md:text-base">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {accounts.map((account) => (
+              <tr key={account.pubkey.toString()} className="border-b border-purple-500/10">
+                <td className="p-2 md:p-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div>
+                      <p className="text-sm md:text-base font-medium">
+                        {account.mint === 'So11111111111111111111111111111111111111112' ? 'SOL' :
+                         account.mint === 'So11111111111111111111111111111111111111113' ? 'WSOL' :
+                         account.tokenInfo?.symbol || 'Unknown'}
+                      </p>
+                      <p className="text-xs md:text-sm text-purple-300/50">
+                        {account.mint === 'So11111111111111111111111111111111111111112' ? 'Solana' :
+                         account.mint === 'So11111111111111111111111111111111111111113' ? 'Wrapped SOL' :
+                         account.tokenInfo?.name || 'Unknown Token'}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-2 md:p-4 text-sm md:text-base">{account.balance}</td>
+                <td className="p-2 md:p-4 text-sm md:text-base">
+                  {account.tokenInfo?.usdValue ? 
+                    `$${(account.balance * account.tokenInfo.usdValue).toFixed(2)}` : 
+                    '-'
+                  }
+                </td>
+                <td className="p-2 md:p-4">
+                  <button
+                    onClick={() => onClose(account.pubkey)}
+                    disabled={isClosing || !hasEnoughSol}
+                    className="text-sm md:text-base px-3 py-1.5 md:px-4 md:py-2 bg-purple-500/20 rounded-lg hover:bg-purple-500/30 disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  {account.closeWarning && (
+                    <p className="text-xs md:text-sm text-yellow-300 mt-1">{account.closeWarning}</p>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 } 
