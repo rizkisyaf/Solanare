@@ -57,22 +57,9 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Solanare - Solana Token Account Manager",
     description: "Clean up unused Solana token accounts and reclaim SOL",
-    site: '@kisra_fistya',
+    site: '@solanare',
     creator: '@kisra_fistya',
-    images: [{
-      url: 'https://solanare.claims/og-logo.png',
-      width: 1200,
-      height: 630,
-      alt: 'Solanare - Solana Token Account Manager'
-    }],
-  },
-  other: {
-    'og:image': 'https://solanare.claims/og-logo.png',
-    'og:image:secure_url': 'https://solanare.claims/og-logo.png',
-    'og:image:type': 'image/png',
-    'og:image:width': '1200',
-    'og:image:height': '630',
-    'og:type': 'website',
+    images: '/og-logo.png'
   }
 };
 
@@ -84,12 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script
-          defer
-          src={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL}
-          data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ErrorBoundary>

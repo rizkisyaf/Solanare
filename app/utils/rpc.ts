@@ -1,28 +1,11 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-const MAX_RETRIES = 3
+const MAX_RETRIES = 0
 const RETRY_DELAY = 2000
 const RATE_LIMIT_COOLDOWN = 30000
 
 export function getConnection(commitment: Commitment = 'processed') {
-  const handleResponse = async (response: Response) => {
-    if (response.status === 429) {
-      logger.warn('Rate limit reached, cooling down', {
-        details: { cooldown: RATE_LIMIT_COOLDOWN }
-      })
-      await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_COOLDOWN))
-      throw new Error('RATE_LIMIT')
-    }
-    if (response.status === 401) {
-      logger.error('Unauthorized RPC access', {
-        details: { endpoint: process.env.NEXT_PUBLIC_RPC_ENDPOINT }
-      })
-      throw new Error('UNAUTHORIZED')
-    }
-    return response
-  }
-
   return new Connection(
     process.env.NEXT_PUBLIC_RPC_ENDPOINT!,
     {
@@ -30,23 +13,36 @@ export function getConnection(commitment: Commitment = 'processed') {
       confirmTransactionInitialTimeout: 60000,
       wsEndpoint: undefined,
       fetch: async (url, options) => {
-        for (let i = 0; i < MAX_RETRIES; i++) {
-          try {
-            const response = await fetch(url, {
-              ...options,
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_RPC_API_KEY}`
-              }
-            })
-            return handleResponse(response)
-          } catch (error) {
-            if (i === MAX_RETRIES - 1) throw error
-            if (error instanceof Error && error.message === 'UNAUTHORIZED') throw error
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
+
+          if (response.status === 429) {
+            logger.warn('Rate limit reached, cooling down')
+            await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_COOLDOWN))
+            throw new Error('RATE_LIMIT')
           }
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const connectionType = response.headers.get('X-Helius-ConnectionType')
+          if (connectionType) {
+            logger.info('Helius connection type:', { type: connectionType })
+          }
+
+          return response
+        } catch (error) {
+          logger.error('RPC request failed', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+          throw error
         }
-        throw new Error('Max retries exceeded')
       }
     }
   )

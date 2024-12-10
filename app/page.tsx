@@ -24,31 +24,29 @@ import {
   PaginationPrevious
 } from "@/components/ui/pagination"
 import { BalanceFilter } from './types/accounts'
-import { BalanceFilter as BalanceFilterComponent } from '@/components/BalanceFilter'
 import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
 import { RENT_EXEMPTION, RENT_AFTER_FEE, MIN_VIABLE_RECLAIM } from './utils/constants'
-import { ReclaimCard } from "@/components/ReclaimCard"
-import ReactDOM from 'react-dom/client'
-import html2canvas from 'html2canvas'
 import { checkTokenHolder } from './utils/token'
 import { StarField } from '@/components/StarField'
 import Link from 'next/link'
+import { TokenAccountsTable } from '@/components/TokenAccountsTable'
+import { AccountStats } from '@/components/AccountStats'
 
 interface TokenAccount {
   pubkey: PublicKey
   mint: string
   balance: number
-  isAssociated: boolean
   type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
   programId: PublicKey
-  rentExemption: number  // Make this required
+  rentExemption: number
   isCloseable: boolean
-  closeWarning: string  // Make this required
-  isMintable?: boolean  // Optional
-  hasFreezingAuthority?: boolean  // Optional
-  isFrozen?: boolean  // Optional
+  closeWarning: string
+  isAssociated?: boolean
+  isMintable?: boolean
+  hasFreezingAuthority?: boolean
+  isFrozen?: boolean
 }
 
 // Move WalletMultiButton import here
@@ -82,6 +80,7 @@ export default function Component() {
   const [isTokenHolder, setIsTokenHolder] = useState(false)
   const [messageError, setMessageError] = useState<string>('')
   const [showMessageInput, setShowMessageInput] = useState(false);
+  const [userSolBalance, setUserSolBalance] = useState<number>(0);
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -121,6 +120,24 @@ export default function Component() {
     checkHolder();
   }, [publicKey, connection]);
 
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (publicKey && connection) {
+        try {
+          const balance = await connection.getBalance(publicKey);
+          setUserSolBalance(balance / 1e9); // Convert lamports to SOL
+        } catch (err) {
+          logger.error('Error fetching SOL balance', { error: err });
+        }
+      }
+    };
+
+    fetchBalance();
+    // Refresh balance periodically
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [publicKey, connection]);
+
   if (!mounted) {
     return null
   }
@@ -140,7 +157,7 @@ export default function Component() {
 
       logger.info('Starting account scan', { publicKey: publicKey.toString() });
 
-      const scanResults = await scanAllAccounts(getConnection(), publicKey);
+      const scanResults = await scanAllAccounts(connection, publicKey);
 
       if (scanResults) {
         // Track scan success
@@ -224,22 +241,24 @@ export default function Component() {
   };
 
   const closeAccounts = async () => {
-    if (!publicKey || !connection || closing) return;
+    if (!publicKey || !connection) return;
+    
     setClosing(true);
-
     try {
-      const isHolder = await checkTokenHolder(publicKey);
-      setIsCheckingTokenHolder(false);
-
       for (const account of accounts.filter(a => a.isCloseable)) {
         await closeTokenAccount(
           connection,
           publicKey,
           account.pubkey,
-          sendTransaction,
-          isHolder
+          sendTransaction
         );
       }
+      
+      await scanAccounts();
+      toast({
+        title: "Accounts closed successfully",
+        description: "All selected accounts have been closed"
+      });
 
       // Save to museum if eligible
       if (accounts.length > 0) {
@@ -250,27 +269,21 @@ export default function Component() {
             totalAccounts: accounts.filter(a => a.isCloseable).length,
             totalReclaimed: getTotalReclaimAmount(accounts),
             walletAddress: publicKey.toString(),
-            tokenHolder: isHolder,
-            personalMessage: isHolder ? personalMessage : undefined
+            tokenHolder: isTokenHolder,
+            personalMessage: isTokenHolder ? personalMessage : undefined
           })
         });
       }
-
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       toast({
-        title: "Success!",
-        description: `Closed ${accounts.filter(a => a.isCloseable).length} accounts`
-      });
-
-    } catch (error) {
-      logger.error('Error closing accounts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to close accounts. Please try again.",
+        title: "Error closing accounts",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
       setClosing(false);
-      await scanAccounts();
     }
   };
 
@@ -534,7 +547,7 @@ export default function Component() {
                   <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
                 </div>
                 <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees 🎉</h5>
+                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees ��</h5>
                   <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
                 </div>
                 <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
@@ -600,141 +613,45 @@ export default function Component() {
                   )}
                 </div>
 
-                {/* Add BalanceFilter component here */}
-                {accounts.length > 0 && (
-                  <BalanceFilterComponent onFilterChange={setBalanceFilter} />
-                )}
-
-                {accounts.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-6"
-                  >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto bg-black/30 p-4 rounded-lg border border-purple-500/20">
-                      <div>
-                        <p className="text-purple-300">Closeable Accounts</p>
-                        <p className="text-2xl text-purple-400">
-                          {accounts.filter(a => a.isCloseable).length}
-                        </p>
-                        <p className="text-sm text-purple-300/70">
-                          {(accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE).toFixed(4)} SOL
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-purple-300">Non-Closeable</p>
-                        <p className="text-2xl text-purple-400">
-                          {accounts.filter(a => !a.isCloseable).length}
-                        </p>
-                        <p className="text-sm text-purple-300/70">
-                          {(accounts.filter(a => !a.isCloseable).length * RENT_EXEMPTION).toFixed(4)} SOL
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-purple-300">Account Types</p>
-                        <div className="text-sm text-purple-300/70 space-y-1">
-                          <p>Token: {accounts.filter(a => a.type === 'token').length}</p>
-                          <p>Orders: {accounts.filter(a => a.type === 'openOrder').length}</p>
-                          <p>Undeployed: {accounts.filter(a => a.type === 'undeployed').length}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-purple-300">Total SOL</p>
-                        <p className="text-2xl text-green-400">
-                          {(accounts.filter(a => a.isCloseable).length * RENT_AFTER_FEE).toFixed(4)}
-                        </p>
-                        <p className="text-sm text-red-400/70">
-                          +{(accounts.filter(a => !a.isCloseable).length * RENT_EXEMPTION).toFixed(4)} locked
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
                 <AnimatePresence>
                   {accounts.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full"
-                    >
-                      {paginatedAccounts.map((account) => (
-                        <Card
-                          key={account.pubkey.toString()}
-                          className="relative overflow-hidden bg-black/30 border border-purple-500/20 hover:border-purple-500/40 transition-all"
-                        >
-                          <CardContent className="p-6">
-                            {/* Header with Type and Rent */}
-                            <div className="flex justify-between items-start mb-4">
-                              <span className={`text-xs font-medium px-3 py-1 rounded-full ${account.type === 'token' ? 'bg-purple-500/20 text-purple-300' :
-                                account.type === 'openOrder' ? 'bg-blue-500/20 text-blue-300' :
-                                  account.type === 'undeployed' ? 'bg-green-500/20 text-green-300' :
-                                    'bg-red-500/20 text-red-300'
-                                }`}>
-                                {account.type}
-                              </span>
-                              <div className="text-right">
-                                <span className="text-sm text-purple-300/70">Rent</span>
-                                <p className="text-sm font-medium text-purple-300">{RENT_AFTER_FEE.toFixed(8)} SOL</p>
-                              </div>
-                            </div>
-
-                            {/* Status Tags */}
-                            {(account.isMintable || account.hasFreezingAuthority || account.isFrozen || !account.isCloseable) && (
-                              <div className="flex flex-wrap gap-2 mb-4">
-                                {account.isMintable && (
-                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
-                                    Mintable
-                                  </span>
-                                )}
-                                {account.hasFreezingAuthority && (
-                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-500/20 text-blue-300">
-                                    Freezable
-                                  </span>
-                                )}
-                                {account.isFrozen && (
-                                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300">
-                                    Frozen
-                                  </span>
-                                )}
-                                {!account.isCloseable && (
-                                  <span
-                                    className="text-xs font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-300 cursor-help"
-                                    title={account.closeWarning}
-                                  >
-                                    Not Closeable
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Account Details */}
-                            <div className="space-y-2">
-                              <p className="text-purple-300 text-sm truncate font-mono bg-purple-500/10 px-3 py-2 rounded">
-                                {account.pubkey.toString()}
-                              </p>
-                              <div className="flex justify-between items-center">
-                                <p className="text-purple-400 text-sm">
-                                  Mint: {account.mint.slice(0, 4)}...{account.mint.slice(-4)}
-                                </p>
-                                <span className={`text-xs font-medium px-3 py-1 rounded-full ${account.isAssociated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                                  }`}>
-                                  {account.isAssociated ? 'Associated' : 'Non-Associated'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Balance Footer */}
-                            <div className="mt-4 pt-4 border-t border-purple-500/20">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-purple-300/70">Balance</span>
-                                <span className="text-sm font-medium text-purple-300">{account.balance}</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </motion.div>
+                    <>
+                      <AccountStats 
+                        accounts={accounts}
+                        isTokenHolder={isTokenHolder}
+                      />
+                      
+                      <TokenAccountsTable
+                        accounts={paginatedAccounts}
+                        onClose={async (pubkey) => {
+                          setClosing(true);
+                          try {
+                            await closeTokenAccount(
+                              connection,
+                              publicKey,
+                              pubkey,
+                              sendTransaction
+                            );
+                            await scanAccounts();
+                            toast({
+                              title: "Account closed successfully",
+                              description: "The token account has been closed"
+                            });
+                          } catch (err) {
+                            const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                            toast({
+                              title: "Error closing account",
+                              description: errorMessage,
+                              variant: "destructive"
+                            });
+                          } finally {
+                            setClosing(false);
+                          }
+                        }}
+                        isClosing={closing}
+                        userSolBalance={userSolBalance}
+                      />
+                    </>
                   )}
                 </AnimatePresence>
 
