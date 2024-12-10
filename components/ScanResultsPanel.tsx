@@ -75,7 +75,7 @@ export function ScanResultsPanel({
                 }}
                 className="text-sm md:text-base bg-red-500/20 hover:bg-red-500/30 text-red-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg"
               >
-                Close All
+                Claim All
               </button>
             </div>
           </div>
