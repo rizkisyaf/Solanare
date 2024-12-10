@@ -28,7 +28,7 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
     <div className="w-full overflow-x-auto px-2 md:px-4">
       <div className="flex items-center gap-2 mb-4 p-3 md:p-4 bg-green-500/10 border border-green-500/20">
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-sm md:text-base text-purple-300">Found {accounts.length} Accounts</span>
+        <span className="text-sm md:text-base text-purple-300">You will reclaim</span>
         <span className="text-sm md:text-base text-green-400 font-semibold ml-2">
           (+{totalReclaimableSol.toFixed(4)} SOL)
         </span>
