@@ -17,6 +17,12 @@ interface BaseAccount {
   isMintable?: boolean
   hasFreezingAuthority?: boolean
   isFrozen?: boolean
+  tokenInfo?: {
+    name: string
+    symbol: string
+    logoURI?: string
+    usdValue?: number
+  }
 }
 
 interface TokenAccount extends BaseAccount {
@@ -239,36 +245,33 @@ async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
     const url = `https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: 'metadata-request',
-        method: 'getAssetBatch',
+        id: 'my-id',
+        method: 'searchAssets',
         params: {
-          ids: [mint],
-          options: {
-            showFungible: true,
-            showNativeBalance: true,
-            showMetadata: true
-          }
-        },
-      }),
+          ownerAddress: null,
+          grouping: ['mint'],
+          mintAddress: mint,
+          page: 1,
+          limit: 1
+        }
+      })
     });
 
     if (!response.ok) return null;
     const { result } = await response.json();
     
-    if (!result?.[0]) return null;
-    const token = result[0];
+    if (!result?.items?.[0]) return null;
+    const asset = result.items[0];
 
     return {
-      name: token.metadata?.name || token.legacyMetadata?.data?.name || 'Unknown',
-      symbol: token.metadata?.symbol || token.legacyMetadata?.data?.symbol || 'Unknown',
-      logoURI: token.metadata?.image || token.json?.image || null,
-      usdValue: token.token_info?.price_info?.price_per_token || 0,
-      decimals: token.metadata?.decimals || token.legacyMetadata?.data?.decimals || 0,
+      name: asset.content?.metadata?.name || 'Unknown',
+      symbol: asset.content?.metadata?.symbol || 'Unknown',
+      logoURI: asset.content?.links?.image || asset.content?.files?.[0]?.uri || null,
+      usdValue: asset.token_info?.price_info?.price_per_token || 0,
+      decimals: asset.content?.metadata?.decimals || 0,
       address: mint
     };
   } catch (error) {

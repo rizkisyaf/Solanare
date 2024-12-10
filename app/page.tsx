@@ -22,19 +22,47 @@ import Link from 'next/link'
 import { AccountStats } from '@/components/AccountStats'
 import { ScanResultsPanel } from '@/components/ScanResultsPanel'
 
-interface TokenAccount {
+interface TokenInfo {
+  name: string
+  symbol: string
+  logoURI?: string
+  usdValue?: number
+}
+
+interface BaseAccount {
   pubkey: PublicKey
   mint: string
   balance: number
-  type: 'token' | 'openOrder' | 'undeployed' | 'unknown'
   programId: PublicKey
   rentExemption: number
   isCloseable: boolean
   closeWarning: string
+  tokenInfo?: {
+    name: string
+    symbol: string
+    logoURI?: string
+    usdValue?: number
+  }
+}
+
+interface TokenAccount extends BaseAccount {
+  type: 'token'
   isAssociated?: boolean
   isMintable?: boolean
   hasFreezingAuthority?: boolean
   isFrozen?: boolean
+}
+
+interface OpenOrderAccount extends BaseAccount {
+  type: 'openOrder'
+}
+
+interface UndeployedAccount extends BaseAccount {
+  type: 'undeployed'
+}
+
+interface UnknownAccount extends BaseAccount {
+  type: 'unknown'
 }
 
 // Move WalletMultiButton import here
@@ -49,7 +77,7 @@ const ITEMS_PER_PAGE = 10 // Reduced from 15 for better UX
 export default function Component() {
   // Group all useState hooks together
   const [mounted, setMounted] = useState(false)
-  const [accounts, setAccounts] = useState<TokenAccount[]>([])
+  const [accounts, setAccounts] = useState<BaseAccount[]>([])
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
@@ -186,8 +214,9 @@ export default function Component() {
           closeWarning: account.closeWarning || '',  // Provide default empty string
           isMintable: account.isMintable || false,
           hasFreezingAuthority: account.hasFreezingAuthority || false,
-          isFrozen: account.isFrozen || false
-        })) as TokenAccount[]
+          isFrozen: account.isFrozen || false,
+          tokenInfo: account.tokenInfo
+        })) as BaseAccount[]
 
         setAccounts(allAccounts)
         toast({
@@ -276,7 +305,7 @@ export default function Component() {
     }
   };
 
-  const getTotalReclaimAmount = (accounts: TokenAccount[]) => {
+  const getTotalReclaimAmount = (accounts: BaseAccount[]) => {
     return accounts
       .filter(account => account.isCloseable)
       .reduce((total) => total + RENT_AFTER_FEE, 0);
@@ -490,7 +519,7 @@ export default function Component() {
                   <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
                 </div>
                 <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees ��</h5>
+                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees </h5>
                   <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
                 </div>
                 <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
@@ -559,13 +588,13 @@ export default function Component() {
                 {publicKey && accounts.length > 0 && (
                   <>
                     <AccountStats
-                      accounts={accounts}
+                      accounts={accounts as BaseAccount[]}
                       isTokenHolder={isTokenHolder}
                     />
                     <ScanResultsPanel
                       isOpen={showScanResults}
                       onToggle={() => setShowScanResults(!showScanResults)}
-                      accounts={paginatedAccounts}
+                      accounts={accounts}
                       onClose={async (pubkey) => {
                         setClosing(true);
                         try {
@@ -622,7 +651,7 @@ export default function Component() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
-              <p>Built with ❤️ for the Solana community</p>
+              <p>Built with ���️ for the Solana community</p>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6">
