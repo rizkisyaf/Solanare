@@ -24,7 +24,7 @@ interface ScanResultsPanelProps {
   onCloseAll: () => void
 }
 
-export function ScanResultsPanel({ 
+export function ScanResultsPanel({
   isOpen,
   onToggle,
   accounts,
@@ -35,17 +35,18 @@ export function ScanResultsPanel({
 }: ScanResultsPanelProps) {
   return (
     <AnimatePresence>
-      <motion.div 
+      <motion.div
         initial={{ y: "100%" }}
         animate={{ y: isOpen ? 0 : "calc(100% - 40px)" }}
-        className="fixed inset-0 top-0 z-[60] pointer-events-none"
+        className="fixed inset-0 top-0 z-[1000] pointer-events-none"
       >
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-        <div 
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+        <div
           className="absolute bottom-[40px] left-0 right-0 bg-purple-950/95 border-t border-purple-500/20 pointer-events-auto"
-          style={{ 
+          style={{
             maxHeight: "calc(100vh - 120px)",
-            minHeight: "300px"
+            minHeight: "300px",
+            zIndex: 1001
           }}
         >
           <button

@@ -245,11 +245,13 @@ async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 'metadata-request',
-        method: 'getAsset',
+        method: 'getAssetBatch',
         params: {
-          id: mint,
-          displayOptions: {
-            showFungible: true
+          ids: [mint],
+          options: {
+            showFungible: true,
+            showNativeBalance: true,
+            showMetadata: true
           }
         },
       }),
@@ -258,14 +260,15 @@ async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
     if (!response.ok) return null;
     const { result } = await response.json();
     
-    if (!result) return null;
+    if (!result?.[0]) return null;
+    const token = result[0];
 
     return {
-      name: result.content?.metadata?.name || 'Unknown',
-      symbol: result.content?.metadata?.symbol || 'Unknown',
-      logoURI: result.content?.files?.[0]?.uri || null,
-      usdValue: result.token_info?.price_info?.price_per_token || 0,
-      decimals: result.content?.metadata?.decimals || 0,
+      name: token.metadata?.name || token.legacyMetadata?.data?.name || 'Unknown',
+      symbol: token.metadata?.symbol || token.legacyMetadata?.data?.symbol || 'Unknown',
+      logoURI: token.metadata?.image || token.json?.image || null,
+      usdValue: token.token_info?.price_info?.price_per_token || 0,
+      decimals: token.metadata?.decimals || token.legacyMetadata?.data?.decimals || 0,
       address: mint
     };
   } catch (error) {
