@@ -261,8 +261,8 @@ export default function Component() {
         </nav>
 
         {/* Main scrollable content */}
-        <main className="flex-1 z-10 pb-20 md:pb-0">
-          <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-0">
+        <main className="flex-1 z-10 pb-0 md:pb-0">
+          <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-10">
             <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
 
               {/* Scam Protection Message */}
