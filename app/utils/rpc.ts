@@ -142,7 +142,7 @@ export async function getTokenMetadata(connection: Connection, mint: string) {
 }
 
 // Add helper function to get SOL price
-async function getSolPrice(): Promise<number> {
+export async function getSolPrice(): Promise<number> {
   try {
     const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
     const data = await response.json();

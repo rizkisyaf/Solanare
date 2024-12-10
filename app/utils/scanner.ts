@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { logger } from "./logger"
-import { getTokenMetadata, withFallback } from "./rpc"
+import { getSolPrice, getTokenMetadata, withFallback } from "./rpc"
 import { RENT_EXEMPTION } from "./constants"
 
 interface BaseAccount {
@@ -64,7 +64,23 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
 
     const tokenAccountsPromises = accounts.value.map(async account => {
       const parsedInfo = account.account.data.parsed.info;
-      const metadata = await getTokenMetadata(connection, parsedInfo.mint);
+      const mint = parsedInfo.mint;
+      
+      // Special handling for SOL and WSOL
+      const isSol = mint === 'So11111111111111111111111111111111111111112';
+      const isWSol = mint === 'So11111111111111111111111111111111111111113';
+      
+      let metadata;
+      if (isSol || isWSol) {
+        metadata = {
+          name: isSol ? 'Solana' : 'Wrapped SOL',
+          symbol: isSol ? 'SOL' : 'WSOL',
+          usdValue: await getSolPrice(),
+          decimals: 9
+        };
+      } else {
+        metadata = await getTokenMetadata(connection, mint);
+      }
 
       return {
         pubkey: account.pubkey,
