@@ -41,8 +41,8 @@ export function ScanResultsPanel({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <div className="absolute inset-0 flex flex-col">
-          <div className="sticky top-0 bg-purple-950/95 p-4 border-b border-purple-500/20">
+        <div className="absolute inset-0 flex flex-col max-h-screen">
+          <div className="sticky top-0 z-50 bg-purple-950/95 p-4 border-b border-purple-500/20">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-purple-300">
                 Found {accounts.length} Accounts
@@ -56,7 +56,7 @@ export function ScanResultsPanel({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto">
             <TokenAccountsTable
               accounts={accounts}
               onClose={onClose}

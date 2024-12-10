@@ -261,163 +261,106 @@ export default function Component() {
   return (
     <div className="relative min-h-screen flex flex-col bg-black">
       <StarField />
+      
+      {/* Base content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Cosmic Dust */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
 
-      {/* Cosmic Dust */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
-
-      {/* Navbar - fixed at top */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20 safe-top">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-14 md:h-16">
-            <div className="flex items-center gap-2 md:gap-6">
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/voidora-logo.svg"
-                  alt="Voidora Logo"
-                  width={28}
-                  height={28}
-                  className="rounded-full md:w-8 md:h-8"
-                />
-                <div className="text-lg md:text-xl font-bold text-purple-400">Solanare</div>
+        {/* Navbar - fixed at top */}
+        <nav className="fixed top-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-lg border-b border-purple-500/20 safe-top">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between h-14 md:h-16">
+              <div className="flex items-center gap-2 md:gap-6">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/voidora-logo.svg"
+                    alt="Voidora Logo"
+                    width={28}
+                    height={28}
+                    className="rounded-full md:w-8 md:h-8"
+                  />
+                  <div className="text-lg md:text-xl font-bold text-purple-400">Solanare</div>
+                </div>
+                <div className="hidden md:flex items-center gap-4">
+                  <Link
+                    href="/museum"
+                    className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                  >
+                    Museum 🏛️
+                  </Link>
+                  <Link
+                    href="/bump"
+                    className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
+                  >
+                    Bump 🚀
+                  </Link>
+                </div>
               </div>
-              <div className="hidden md:flex items-center gap-4">
-                <Link
-                  href="/museum"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  Museum 🏛️
-                </Link>
-                <Link
-                  href="/bump"
-                  className="text-purple-300/70 hover:text-purple-300 transition-colors flex items-center gap-1"
-                >
-                  Bump 🚀
-                </Link>
-              </div>
-            </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-4 !py-2 !text-sm md:!text-base" />
-            </motion.div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Add mobile navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black/50 backdrop-blur-lg border-t border-purple-500/20 safe-bottom">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-around h-16">
-            <Link
-              href="/"
-              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
-            >
-              <span className="text-lg">🏠</span>
-              <span className="text-xs">Home</span>
-            </Link>
-            <Link
-              href="/museum"
-              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
-            >
-              <span className="text-lg">🏛️</span>
-              <span className="text-xs">Museum</span>
-            </Link>
-            <Link
-              href="/bump"
-              className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
-            >
-              <span className="text-lg">🚀</span>
-              <span className="text-xs">Bump</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Main scrollable content */}
-      <main className="flex-1 overflow-y-auto z-20 pb-20 md:pb-0">
-        <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-24">
-          <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
-
-            {/* Scam Protection Message */}
-            {publicKey && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="w-full flex justify-center items-center mb-8"
+                transition={{ delay: 0.2 }}
               >
-                <div className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full text-sm flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                  Scam Protection Active
-                </div>
+                <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-4 !py-2 !text-sm md:!text-base" />
               </motion.div>
-            )}
+            </div>
+          </div>
+        </nav>
 
-            <h1 className="text-7xl font-bold mb-6 leading-tight tracking-tight text-center">
-              <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
-                Void. Vanish. Value.
-              </span>
-            </h1>
+        {/* Main scrollable content */}
+        <main className="flex-1 z-10 pb-20 md:pb-0">
+          <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-24">
+            <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
 
-            <p className="text-2xl text-purple-300/70 mb-12 max-w-2xl mx-auto text-center">
-              Watch your zero-balance accounts disappear into the cosmic void, reclaiming precious SOL
-            </p>
-
-            {/* Add Token Info Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-12 p-4 bg-purple-900/20 border border-purple-500/20 rounded-lg max-w-xl mx-auto"
-            >
-              <div className="text-center space-y-3">
-                <h3 className="text-xl md:text-2xl font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
-                  $SOLANARE Token
-                </h3>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                  <div className="w-full sm:w-auto group relative">
-                    <code className="block w-full sm:w-auto bg-black/30 px-3 py-2 rounded-lg text-purple-300 font-mono text-xs sm:text-sm break-all sm:break-normal">
-                      14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
-                    </code>
-                    <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/5 transition-colors rounded-lg" />
+              {/* Scam Protection Message */}
+              {publicKey && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="w-full flex justify-center items-center mb-8"
+                >
+                  <div className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                    Scam Protection Active
                   </div>
+                </motion.div>
+              )}
 
-                  {/* Desktop Copy Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hidden md:flex h-8 w-8 text-purple-400 hover:text-purple-300 shrink-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
-                      toast({
-                        title: "Address Copied",
-                        description: "Token address copied to clipboard",
-                      })
-                    }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  </Button>
+              <h1 className="text-7xl font-bold mb-6 leading-tight tracking-tight text-center">
+                <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 text-transparent bg-clip-text">
+                  Void. Vanish. Value.
+                </span>
+              </h1>
 
-                  {/* Mobile Actions */}
-                  <div className="flex items-center gap-2 sm:hidden">
+              <p className="text-2xl text-purple-300/70 mb-12 max-w-2xl mx-auto text-center">
+                Watch your zero-balance accounts disappear into the cosmic void, reclaiming precious SOL
+              </p>
+
+              {/* Add Token Info Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-12 p-4 bg-purple-900/20 border border-purple-500/20 rounded-lg max-w-xl mx-auto"
+              >
+                <div className="text-center space-y-3">
+                  <h3 className="text-xl md:text-2xl font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                    $SOLANARE Token
+                  </h3>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <div className="w-full sm:w-auto group relative">
+                      <code className="block w-full sm:w-auto bg-black/30 px-3 py-2 rounded-lg text-purple-300 font-mono text-xs sm:text-sm break-all sm:break-normal">
+                        14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
+                      </code>
+                      <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/5 transition-colors rounded-lg" />
+                    </div>
+
+                    {/* Desktop Copy Button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                      className="hidden md:flex h-8 w-8 text-purple-400 hover:text-purple-300 shrink-0"
                       onClick={() => {
                         navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
                         toast({
@@ -441,156 +384,216 @@ export default function Component() {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                       </svg>
                     </Button>
-                    <Link href="/bump">
+
+                    {/* Mobile Actions */}
+                    <div className="flex items-center gap-2 sm:hidden">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                        onClick={() => {
+                          navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
+                          toast({
+                            title: "Address Copied",
+                            description: "Token address copied to clipboard",
+                          })
+                        }}
                       >
-                        <span className="text-lg">🚀</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
                       </Button>
-                    </Link>
+                      <Link href="/bump">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                        >
+                          <span className="text-lg">🚀</span>
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                  <p className="text-xs sm:text-sm text-purple-300/70">
+                    Now available on Moonshot 🚀
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div className="mb-8 space-y-4">
+                <h4 className="text-lg font-semibold text-purple-300">Token Holder Benefits</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                    <h5 className="font-medium text-purple-300 mb-2">Premium Display 💎</h5>
+                    <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
+                  </div>
+                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                    <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees </h5>
+                    <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
+                  </div>
+                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                    <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍️</h5>
+                    <p className="text-sm text-purple-300/70">Add personal messages to your reclaim cards</p>
+                  </div>
+                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
+                    <h5 className="font-medium text-purple-300 mb-2">Priority Support 🎯</h5>
+                    <p className="text-sm text-purple-300/70">Direct access to developer support</p>
                   </div>
                 </div>
-                <p className="text-xs sm:text-sm text-purple-300/70">
-                  Now available on Moonshot 🚀
-                </p>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            <motion.div className="mb-8 space-y-4">
-              <h4 className="text-lg font-semibold text-purple-300">Token Holder Benefits</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Premium Display 💎</h5>
-                  <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
-                </div>
-                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees </h5>
-                  <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
-                </div>
-                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍️</h5>
-                  <p className="text-sm text-purple-300/70">Add personal messages to your reclaim cards</p>
-                </div>
-                <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                  <h5 className="font-medium text-purple-300 mb-2">Priority Support 🎯</h5>
-                  <p className="text-sm text-purple-300/70">Direct access to developer support</p>
-                </div>
-              </div>
-            </motion.div>
-
-            {isTokenHolder && (
-              <div className="mb-4">
-                <label className="block text-sm text-purple-300 mb-2">Personal Message</label>
-                <input
-                  type="text"
-                  value={personalMessage}
-                  onChange={handleMessageChange}
-                  maxLength={100}
-                  className={`w-full bg-black/30 border ${messageError ? 'border-red-500' : 'border-purple-500/20'
-                    } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
-                  placeholder="Add your personal message (Token Holder Exclusive)"
-                />
-                {messageError && (
-                  <p className="text-xs text-red-500 mt-1">{messageError}</p>
-                )}
-              </div>
-            )}
-
-            {publicKey ? (
-              <div className="space-y-8">
-                <div className="flex justify-center gap-4">
-                  <Button
-                    onClick={scanAccounts}
-                    disabled={loading}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-                  >
-                    {loading ? "Scanning..." : "Scan Accounts"}
-                  </Button>
-                  <div className="text-sm text-purple-300/70 mb-2">
-                    A {isTokenHolder ? '3' : '5'}% platform fee applies to reclaimed SOL
-                    {isCheckingTokenHolder && <span className="ml-2 animate-pulse">Checking status...</span>}
-                  </div>
-                  {accounts.length > 0 && (
-                    <Button
-                      onClick={handlePreClose}
-                      disabled={
-                        closing ||
-                        !accounts.some(account => account.isCloseable) ||
-                        getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM
-                      }
-                      className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all relative group"
-                    >
-                      {closing ? "Closing..." : `Close ${accounts.filter(a => a.isCloseable).length} Accounts`}
-                      {getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM && (
-                        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-xs text-white px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          Total reclaim amount (${getTotalReclaimAmount(accounts).toFixed(4)} SOL) is below minimum (${MIN_VIABLE_RECLAIM} SOL)
-                        </div>
-                      )}
-                    </Button>
+              {isTokenHolder && (
+                <div className="mb-4">
+                  <label className="block text-sm text-purple-300 mb-2">Personal Message</label>
+                  <input
+                    type="text"
+                    value={personalMessage}
+                    onChange={handleMessageChange}
+                    maxLength={100}
+                    className={`w-full bg-black/30 border ${messageError ? 'border-red-500' : 'border-purple-500/20'
+                      } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
+                    placeholder="Add your personal message (Token Holder Exclusive)"
+                  />
+                  {messageError && (
+                    <p className="text-xs text-red-500 mt-1">{messageError}</p>
                   )}
                 </div>
+              )}
 
-                {publicKey && accounts.length > 0 && (
-                  <>
-                    <AccountStats
-                      accounts={accounts as BaseAccount[]}
-                      isTokenHolder={isTokenHolder}
-                    />
-                    <ScanResultsPanel
-                      isOpen={showScanResults}
-                      onToggle={() => setShowScanResults(!showScanResults)}
-                      accounts={accounts}
-                      onClose={async (pubkey) => {
-                        setClosing(true);
-                        try {
-                          await closeTokenAccount(
-                            connection,
-                            publicKey,
-                            pubkey,
-                            sendTransaction
-                          );
-                          await scanAccounts();
-                          toast({
-                            title: "Account closed successfully",
-                            description: "The token account has been closed"
-                          });
-                        } catch (err) {
-                          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-                          toast({
-                            title: "Error closing account",
-                            description: errorMessage,
-                            variant: "destructive"
-                          });
-                        } finally {
-                          setClosing(false);
+              {publicKey ? (
+                <div className="space-y-8">
+                  <div className="flex justify-center gap-4">
+                    <Button
+                      onClick={scanAccounts}
+                      disabled={loading}
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                    >
+                      {loading ? "Scanning..." : "Scan Accounts"}
+                    </Button>
+                    <div className="text-sm text-purple-300/70 mb-2">
+                      A {isTokenHolder ? '3' : '5'}% platform fee applies to reclaimed SOL
+                      {isCheckingTokenHolder && <span className="ml-2 animate-pulse">Checking status...</span>}
+                    </div>
+                    {accounts.length > 0 && (
+                      <Button
+                        onClick={handlePreClose}
+                        disabled={
+                          closing ||
+                          !accounts.some(account => account.isCloseable) ||
+                          getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM
                         }
-                      }}
-                      isClosing={closing}
-                      userSolBalance={userSolBalance}
-                      onCloseAll={closeAccounts}
-                    />
-                  </>
-                )}
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="text-sm text-purple-300/50 flex items-center justify-center gap-2"
+                        className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all relative group"
+                      >
+                        {closing ? "Closing..." : `Close ${accounts.filter(a => a.isCloseable).length} Accounts`}
+                        {getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM && (
+                          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-xs text-white px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Total reclaim amount (${getTotalReclaimAmount(accounts).toFixed(4)} SOL) is below minimum (${MIN_VIABLE_RECLAIM} SOL)
+                          </div>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {publicKey && accounts.length > 0 && (
+                    <>
+                      <AccountStats
+                        accounts={accounts as BaseAccount[]}
+                        isTokenHolder={isTokenHolder}
+                      />
+                      <ScanResultsPanel
+                        isOpen={showScanResults}
+                        onToggle={() => setShowScanResults(!showScanResults)}
+                        accounts={accounts}
+                        onClose={async (pubkey) => {
+                          setClosing(true);
+                          try {
+                            await closeTokenAccount(
+                              connection,
+                              publicKey,
+                              pubkey,
+                              sendTransaction
+                            );
+                            await scanAccounts();
+                            toast({
+                              title: "Account closed successfully",
+                              description: "The token account has been closed"
+                            });
+                          } catch (err) {
+                            const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                            toast({
+                              title: "Error closing account",
+                              description: errorMessage,
+                              variant: "destructive"
+                            });
+                          } finally {
+                            setClosing(false);
+                          }
+                        }}
+                        isClosing={closing}
+                        userSolBalance={userSolBalance}
+                        onCloseAll={closeAccounts}
+                      />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-sm text-purple-300/50 flex items-center justify-center gap-2"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                  </span>
+                  Connect your wallet to begin
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* Mobile navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-20 md:hidden bg-black/50 backdrop-blur-lg border-t border-purple-500/20 safe-bottom">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-around h-16">
+              <Link
+                href="/"
+                className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                </span>
-                Connect your wallet to begin
-              </motion.div>
-            )}
+                <span className="text-lg">🏠</span>
+                <span className="text-xs">Home</span>
+              </Link>
+              <Link
+                href="/museum"
+                className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
+              >
+                <span className="text-lg">🏛️</span>
+                <span className="text-xs">Museum</span>
+              </Link>
+              <Link
+                href="/bump"
+                className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
+              >
+                <span className="text-lg">🚀</span>
+                <span className="text-xs">Bump</span>
+              </Link>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Fixed footer */}
       <footer className="fixed bottom-0 left-0 right-0 z-20 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
