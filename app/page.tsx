@@ -161,94 +161,41 @@ export default function Component() {
 
   const scanAccounts = async () => {
     if (!publicKey) return;
-
     setLoading(true);
-    setSecurityCheck(undefined);
-
+    
     try {
-      // Track scan start
-      trackEvent('scan_accounts_clicked', {
-        wallet: publicKey.toString(),
-        timestamp: new Date().toISOString()
-      });
-
-      logger.info('Starting account scan', { publicKey: publicKey.toString() });
-
       const scanResults = await scanAllAccounts(connection, publicKey);
-
+      
       if (scanResults) {
-        // Track scan success
-        trackEvent('scan_accounts_success', {
-          wallet: publicKey.toString(),
-          accountsFound: scanResults.tokenAccounts.length,
-          potentialSOL: scanResults.potentialSOL,
-          timestamp: new Date().toISOString()
-        });
-
-        const securityCheck = await checkTransactionSecurity(
-          connection,
-          publicKey,
-          { accounts: scanResults }
-        )
-
-        setSecurityCheck(securityCheck)
-
-        if (securityCheck.isScam) {
-          throw new Error(`Security Risk Detected: ${securityCheck.details}`)
-        }
-
         const allAccounts = [
           ...scanResults.tokenAccounts,
           ...scanResults.openOrders,
           ...scanResults.undeployedTokens,
           ...scanResults.unknownAccounts
         ].map(account => ({
-          pubkey: account.pubkey,
-          mint: account.mint || 'unknown',
-          balance: account.balance,
-          isAssociated: account.isAssociated,
-          type: account.type,
-          programId: account.programId,
-          rentExemption: account.rentExemption || RENT_EXEMPTION,
-          isCloseable: account.isCloseable,
-          closeWarning: account.closeWarning || '',  // Provide default empty string
-          isMintable: account.isMintable || false,
-          hasFreezingAuthority: account.hasFreezingAuthority || false,
-          isFrozen: account.isFrozen || false,
-          tokenInfo: account.tokenInfo
-        })) as BaseAccount[]
-
-        setAccounts(allAccounts)
-        toast({
-          title: "Scan Complete",
-          description: `Found ${allAccounts.length} accounts with ${scanResults.potentialSOL.toFixed(8)} SOL potential reclaim`,
-        })
+          ...account,
+          tokenInfo: account.tokenInfo || {
+            name: account.type === 'token' ? 'Unknown Token' : account.type,
+            symbol: account.type === 'token' ? 'UNKNOWN' : account.type.toUpperCase(),
+            logoURI: undefined,
+            usdValue: 0
+          }
+        })) as BaseAccount[];
+        
+        setAccounts(allAccounts);
+        setSecurityCheck(await checkTransactionSecurity(connection, publicKey, { accounts: scanResults }));
       }
-
     } catch (error) {
-      // Track scan error
-      trackEvent('scan_accounts_error', {
-        wallet: publicKey.toString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      });
-
-      logger.error('Error scanning accounts', {
-        error,
-        details: {
-          walletAddress: publicKey?.toString(),
-          operation: 'scanAccounts'
-        }
-      });
+      logger.error('Error scanning accounts', { error });
       toast({
         title: "Error scanning accounts",
-        description: error instanceof Error ? error.message : "Please try again later",
-        variant: "destructive",
+        description: "Failed to scan accounts. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePreClose = () => {
     if (isTokenHolder) {
@@ -651,7 +598,7 @@ export default function Component() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
-              <p>Built with ���️ for the Solana community</p>
+              <p>Built with ️ for the Solana community</p>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6">
