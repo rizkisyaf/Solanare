@@ -261,8 +261,8 @@ export default function Component() {
         </nav>
 
         {/* Main scrollable content */}
-        <main className="flex-1 z-10 pb-20 md:pb-0">
-          <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-24">
+        <main className="flex-1 z-10 pb-0 md:pb-0">
+          <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-0">
             <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
 
               {/* Scam Protection Message */}
@@ -485,7 +485,7 @@ export default function Component() {
         </main>
 
         {/* Mobile navigation */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 md:hidden bg-black/50 backdrop-blur-lg border-t border-purple-500/20 safe-bottom">
+        <div className="fixed bottom-5 left-0 right-0 z-20 md:hidden bg-black/50 backdrop-blur-lg border-t border-purple-500/20 safe-bottom">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-around h-16">
               <Link
