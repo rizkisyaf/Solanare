@@ -81,6 +81,7 @@ export default function Component() {
   const [messageError, setMessageError] = useState<string>('')
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
+  const [showScanResults, setShowScanResults] = useState(false);
 
   // Group all refs and context hooks
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -137,6 +138,12 @@ export default function Component() {
     const interval = setInterval(fetchBalance, 30000);
     return () => clearInterval(interval);
   }, [publicKey, connection]);
+
+  useEffect(() => {
+    if (accounts.length > 0) {
+      setShowScanResults(true);
+    }
+  }, [accounts]);
 
   if (!mounted) {
     return null
@@ -616,41 +623,58 @@ export default function Component() {
                 <AnimatePresence>
                   {accounts.length > 0 && (
                     <>
-                      <AccountStats 
-                        accounts={accounts}
-                        isTokenHolder={isTokenHolder}
-                      />
-                      
-                      <TokenAccountsTable
-                        accounts={paginatedAccounts}
-                        onClose={async (pubkey) => {
-                          setClosing(true);
-                          try {
-                            await closeTokenAccount(
-                              connection,
-                              publicKey,
-                              pubkey,
-                              sendTransaction
-                            );
-                            await scanAccounts();
-                            toast({
-                              title: "Account closed successfully",
-                              description: "The token account has been closed"
-                            });
-                          } catch (err) {
-                            const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-                            toast({
-                              title: "Error closing account",
-                              description: errorMessage,
-                              variant: "destructive"
-                            });
-                          } finally {
-                            setClosing(false);
-                          }
-                        }}
-                        isClosing={closing}
-                        userSolBalance={userSolBalance}
-                      />
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: showScanResults ? 1 : 0.3 }}
+                        className="relative"
+                      >
+                        <button
+                          onClick={() => setShowScanResults(!showScanResults)}
+                          className="absolute -top-4 right-4 text-purple-300/50 hover:text-purple-300"
+                        >
+                          {showScanResults ? 'Hide Results' : 'Show Results'}
+                        </button>
+                        
+                        <motion.div
+                          animate={{ height: showScanResults ? 'auto' : 0 }}
+                          className="overflow-hidden"
+                        >
+                          <AccountStats 
+                            accounts={accounts}
+                            isTokenHolder={isTokenHolder}
+                          />
+                          <TokenAccountsTable
+                            accounts={paginatedAccounts}
+                            onClose={async (pubkey) => {
+                              setClosing(true);
+                              try {
+                                await closeTokenAccount(
+                                  connection,
+                                  publicKey,
+                                  pubkey,
+                                  sendTransaction
+                                );
+                                await scanAccounts();
+                                toast({
+                                  title: "Account closed successfully",
+                                  description: "The token account has been closed"
+                                });
+                              } catch (err) {
+                                const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                                toast({
+                                  title: "Error closing account",
+                                  description: errorMessage,
+                                  variant: "destructive"
+                                });
+                              } finally {
+                                setClosing(false);
+                              }
+                            }}
+                            isClosing={closing}
+                            userSolBalance={userSolBalance}
+                          />
+                        </motion.div>
+                      </motion.div>
                     </>
                   )}
                 </AnimatePresence>

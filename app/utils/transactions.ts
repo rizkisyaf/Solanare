@@ -1,5 +1,5 @@
-import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
-import { createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { Connection, PublicKey, Transaction, SystemProgram, ParsedAccountData } from "@solana/web3.js"
+import { createBurnInstruction, createCloseAccountInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { TREASURY_WALLET, PLATFORM_FEE_PERCENTAGE } from "./constants"
 
 export async function closeTokenAccount(
@@ -11,17 +11,34 @@ export async function closeTokenAccount(
 ) {
   const { blockhash } = await connection.getLatestBlockhash();
   
+  // First burn any remaining tokens
+  const accountInfo = await connection.getParsedAccountInfo(tokenAccount);
+  const parsedInfo = (accountInfo.value?.data as ParsedAccountData).parsed.info;
+  const balance = parsedInfo?.tokenAmount?.uiAmount || 0;
+  
+  const transaction = new Transaction();
+  
+  if (balance > 0) {
+    const burnInstruction = createBurnInstruction(
+      tokenAccount,
+      parsedInfo.mint,
+      wallet,
+      balance,
+      []
+    );
+    transaction.add(burnInstruction);
+  }
+
+  // Then close the account
   const closeInstruction = createCloseAccountInstruction(
     tokenAccount,
-    TREASURY_WALLET,
+    wallet, // Return lamports to wallet owner instead of treasury
     wallet,
     [],
     TOKEN_PROGRAM_ID
   );
-
-  const transaction = new Transaction()
-    .add(closeInstruction);
   
+  transaction.add(closeInstruction);
   transaction.feePayer = wallet;
   transaction.recentBlockhash = blockhash;
 

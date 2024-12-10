@@ -35,7 +35,14 @@ interface UnknownAccount extends BaseAccount {
   type: 'unknown'
 }
 
-type AccountInfo = TokenAccount | OpenOrderAccount | UndeployedAccount | UnknownAccount
+interface TokenMetadata {
+  name: string
+  symbol: string
+  logoURI?: string
+  usdValue?: number
+  decimals: number
+  address: string
+}
 
 interface ScanResults {
   tokenAccounts: TokenAccount[]
@@ -58,8 +65,10 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
       programId: TOKEN_PROGRAM_ID
     });
 
-    const tokenAccounts = accounts.value.map(account => {
+    const tokenAccountsPromises = accounts.value.map(async account => {
       const parsedInfo = account.account.data.parsed.info;
+      const metadata = await getTokenMetadata(parsedInfo.mint);
+
       return {
         pubkey: account.pubkey,
         mint: parsedInfo.mint,
@@ -67,15 +76,17 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
         type: 'token' as const,
         programId: TOKEN_PROGRAM_ID,
         isCloseable: true,
-        closeWarning: parsedInfo.tokenAmount.uiAmount > 0 ? 
-          'Balance will be sent to platform fee wallet' : undefined,
+        closeWarning: parsedInfo.tokenAmount.uiAmount > 0 ?
+          'Remaining token balance will be burned' : undefined,
         isAssociated: true,
         isMintable: false,
         hasFreezingAuthority: false,
-        isFrozen: false
+        isFrozen: false,
+        tokenInfo: metadata
       };
     });
 
+    const tokenAccounts = await Promise.all(tokenAccountsPromises);
     return tokenAccounts;
 
   } catch (error) {
@@ -218,6 +229,16 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
   return 'high'
 }
 
+async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
+  try {
+    const response = await fetch(`https://token-list-api.solana.cloud/v1/token/${mint}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    logger.error('Error fetching token metadata', { error, mint });
+    return null;
+  }
+}
 
 export async function scanAllAccounts(connection: Connection, publicKey: PublicKey): Promise<ScanResults> {
   logger.info('Starting comprehensive account scan', { publicKey: publicKey.toString() });
