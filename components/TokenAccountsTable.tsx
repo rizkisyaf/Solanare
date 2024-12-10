@@ -2,22 +2,24 @@ import { RENT_AFTER_FEE } from "@/app/utils/constants"
 import { PublicKey } from "@solana/web3.js"
 import Image from 'next/image'
 
+interface BaseAccount {
+  pubkey: PublicKey;
+  mint: string;
+  balance: number;
+  isCloseable: boolean;
+  closeWarning?: string;
+  tokenInfo?: {
+    name: string;
+    symbol: string;
+    usdValue?: number;
+  };
+}
+
 interface TokenAccountsTableProps {
-  accounts: {
-    pubkey: PublicKey
-    mint: string
-    balance: number
-    isCloseable: boolean
-    closeWarning?: string
-    tokenInfo?: {
-      name: string
-      symbol: string
-      usdValue?: number
-    }
-  }[]
-  onClose: (pubkey: PublicKey) => void
-  isClosing: boolean
-  userSolBalance: number
+  accounts: BaseAccount[];
+  onClose: (pubkey: PublicKey) => void;
+  isClosing: boolean;
+  userSolBalance: number;
 }
 
 export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalance }: TokenAccountsTableProps) {
@@ -51,7 +53,7 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
           </thead>
           <tbody>
             {accounts.map((account) => (
-              <tr key={account.pubkey.toString()} className="border-b border-purple-500/10">
+              <tr key={account.pubkey.toBase58()} className="border-b border-purple-500/10">
                 <td className="p-2 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
                     <div>

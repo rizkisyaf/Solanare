@@ -129,13 +129,15 @@ export default function Component() {
       const scanResults = await scanAllAccounts(connection, publicKey);
 
       if (scanResults) {
-        const allAccounts = [
+        const allAccounts: BaseAccount[] = [
           ...scanResults.tokenAccounts,
           ...scanResults.openOrders,
           ...scanResults.undeployedTokens,
           ...scanResults.unknownAccounts
         ].map(account => ({
           ...account,
+          pubkey: new PublicKey(account.pubkey),
+          rentExemption: account.rentExemption || 0,
           tokenInfo: account.tokenInfo || {
             name: account.type === 'token' ? 'Unknown Token' : account.type,
             symbol: account.type === 'token' ? 'UNKNOWN' : account.type.toUpperCase(),
@@ -418,7 +420,7 @@ export default function Component() {
                     <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
                   </div>
                   <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                    <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍️</h5>
+                    <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍</h5>
                     <p className="text-sm text-purple-300/70">Add personal messages to your reclaim cards</p>
                   </div>
                   <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">

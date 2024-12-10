@@ -5,14 +5,15 @@ import { TREASURY_WALLET, PLATFORM_FEE_PERCENTAGE } from "./constants"
 export async function closeTokenAccount(
   connection: Connection,
   wallet: PublicKey,
-  tokenAccount: PublicKey,
+  tokenAccount: PublicKey | string,
   sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>,
   _isHolder?: boolean
 ) {
+  const tokenAccountPubkey = typeof tokenAccount === 'string' ? new PublicKey(tokenAccount) : tokenAccount;
   const { blockhash } = await connection.getLatestBlockhash();
   
   // First burn any remaining tokens
-  const accountInfo = await connection.getParsedAccountInfo(tokenAccount);
+  const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
   const parsedInfo = (accountInfo.value?.data as ParsedAccountData).parsed.info;
   const balance = parsedInfo?.tokenAmount?.amount || 0;
   
@@ -20,7 +21,7 @@ export async function closeTokenAccount(
   
   if (Number(balance) > 0) {
     const burnInstruction = createBurnInstruction(
-      tokenAccount,
+      tokenAccountPubkey,
       parsedInfo.mint,
       wallet,
       BigInt(balance),
@@ -31,8 +32,8 @@ export async function closeTokenAccount(
 
   // Then close the account
   const closeInstruction = createCloseAccountInstruction(
-    tokenAccount,
-    wallet, // Return lamports to wallet owner instead of treasury
+    tokenAccountPubkey,
+    wallet,
     wallet,
     [],
     TOKEN_PROGRAM_ID
