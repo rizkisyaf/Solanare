@@ -2,37 +2,25 @@
 
 import dynamic from 'next/dynamic'
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useRef, useState } from "react"
+import { motion } from "framer-motion"
+import { useEffect, useState } from "react"
 import { PublicKey } from "@solana/web3.js"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { logger } from "./utils/logger"
 import '@solana/wallet-adapter-react-ui/styles.css'
-import { BlackHole } from '@/components/BlackHole'
 import { scanAllAccounts } from './utils/scanner'
 import { checkTransactionSecurity, SecurityCheck } from './utils/security'
 import { SecurityStatus } from "@/components/SecurityStatus"
 import Image from 'next/image'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious
-} from "@/components/ui/pagination"
-import { BalanceFilter } from './types/accounts'
-import { getConnection } from './utils/rpc'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
 import { RENT_EXEMPTION, RENT_AFTER_FEE, MIN_VIABLE_RECLAIM } from './utils/constants'
 import { checkTokenHolder } from './utils/token'
 import { StarField } from '@/components/StarField'
 import Link from 'next/link'
-import { TokenAccountsTable } from '@/components/TokenAccountsTable'
 import { AccountStats } from '@/components/AccountStats'
+import { ScanResultsPanel } from '@/components/ScanResultsPanel'
 
 interface TokenAccount {
   pubkey: PublicKey
@@ -57,14 +45,6 @@ const WalletMultiButton = dynamic(
 
 // Add these constants at the top with other constants
 const ITEMS_PER_PAGE = 10 // Reduced from 15 for better UX
-const DEFAULT_FILTER: BalanceFilter = {
-  min: 0,
-  max: 0,
-  includeNonZero: false,
-  includeFreezable: false,
-  includeMintable: false,
-  filterType: 'all'
-}
 
 export default function Component() {
   // Group all useState hooks together
@@ -73,8 +53,6 @@ export default function Component() {
   const [loading, setLoading] = useState(false)
   const [closing, setClosing] = useState(false)
   const [securityCheck, setSecurityCheck] = useState<SecurityCheck | undefined>(undefined)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>(DEFAULT_FILTER)
   const [personalMessage, setPersonalMessage] = useState<string>("");
   const [isCheckingTokenHolder, setIsCheckingTokenHolder] = useState(false)
   const [isTokenHolder, setIsTokenHolder] = useState(false)
@@ -82,9 +60,13 @@ export default function Component() {
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
   const [showScanResults, setShowScanResults] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const paginatedAccounts = accounts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   // Group all refs and context hooks
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { toast } = useToast()
@@ -241,15 +223,15 @@ export default function Component() {
 
   const handlePreClose = () => {
     if (isTokenHolder) {
-        setShowMessageInput(true);
+      setShowMessageInput(true);
     } else {
-        closeAccounts();
+      closeAccounts();
     }
   };
 
   const closeAccounts = async () => {
     if (!publicKey || !connection) return;
-    
+
     setClosing(true);
     try {
       for (const account of accounts.filter(a => a.isCloseable)) {
@@ -260,7 +242,7 @@ export default function Component() {
           sendTransaction
         );
       }
-      
+
       await scanAccounts();
       toast({
         title: "Accounts closed successfully",
@@ -281,7 +263,7 @@ export default function Component() {
           })
         });
       }
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       toast({
@@ -294,45 +276,16 @@ export default function Component() {
     }
   };
 
-  // Add this after the useState hooks
-  const filteredAccounts = accounts.filter(account => {
-    if (balanceFilter.filterType === 'zero-only') return account.balance === 0
-    if (balanceFilter.filterType === 'non-zero-only') return account.balance > 0
-    if (balanceFilter.filterType === 'custom') {
-      return account.balance <= balanceFilter.max!
-    }
-    return true
-  }).filter(account => {
-    if (!balanceFilter.includeFreezable && account.hasFreezingAuthority) return false
-    if (!balanceFilter.includeMintable && account.isMintable) return false
-    return true
-  })
-
   const getTotalReclaimAmount = (accounts: TokenAccount[]) => {
     return accounts
       .filter(account => account.isCloseable)
-      .reduce((total, account) => total + RENT_AFTER_FEE, 0);
+      .reduce((total) => total + RENT_AFTER_FEE, 0);
   };
-
-  // Add pagination calculation
-  const getPaginatedAccounts = (accounts: TokenAccount[]) => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    const endIndex = startIndex + ITEMS_PER_PAGE
-    return accounts.slice(startIndex, endIndex)
-  }
-
-  // Add total pages calculation
-  const getTotalPages = (totalItems: number) => {
-    return Math.ceil(totalItems / ITEMS_PER_PAGE)
-  }
-
-  const totalPages = getTotalPages(filteredAccounts.length)
-  const paginatedAccounts = getPaginatedAccounts(filteredAccounts)
 
   return (
     <div className="relative min-h-screen flex flex-col bg-black">
       <StarField />
-      
+
       {/* Cosmic Dust */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(88,28,135,0.15),transparent_80%)] animate-pulse" />
 
@@ -410,23 +363,6 @@ export default function Component() {
       <main className="flex-1 overflow-y-auto z-20 pb-20 md:pb-0">
         <div className="container max-w-6xl mx-auto px-4 pt-20 md:pt-24 pb-24">
           <div className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="w-full flex justify-center"
-            >
-              {/* Black Hole Animation */}
-              <BlackHole
-                scanning={loading}
-                results={accounts.length > 0 ? {
-                  totalAccounts: accounts.length,
-                  potentialSOL: accounts.length * RENT_AFTER_FEE,
-                  riskLevel: accounts.some(a => !a.isAssociated) ? 'medium' : 'low'
-                } : null}
-                isWalletConnected={!!publicKey}
-              />
-            </motion.div>
 
             {/* Scam Protection Message */}
             {publicKey && (
@@ -470,7 +406,7 @@ export default function Component() {
                     </code>
                     <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/5 transition-colors rounded-lg" />
                   </div>
-                  
+
                   {/* Desktop Copy Button */}
                   <Button
                     variant="ghost"
@@ -620,109 +556,46 @@ export default function Component() {
                   )}
                 </div>
 
-                <AnimatePresence>
-                  {accounts.length > 0 && (
-                    <>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: showScanResults ? 1 : 0.3 }}
-                        className="relative"
-                      >
-                        <button
-                          onClick={() => setShowScanResults(!showScanResults)}
-                          className="absolute -top-4 right-4 text-purple-300/50 hover:text-purple-300"
-                        >
-                          {showScanResults ? 'Hide Results' : 'Show Results'}
-                        </button>
-                        
-                        <motion.div
-                          animate={{ height: showScanResults ? 'auto' : 0 }}
-                          className="overflow-hidden"
-                        >
-                          <AccountStats 
-                            accounts={accounts}
-                            isTokenHolder={isTokenHolder}
-                          />
-                          <TokenAccountsTable
-                            accounts={paginatedAccounts}
-                            onClose={async (pubkey) => {
-                              setClosing(true);
-                              try {
-                                await closeTokenAccount(
-                                  connection,
-                                  publicKey,
-                                  pubkey,
-                                  sendTransaction
-                                );
-                                await scanAccounts();
-                                toast({
-                                  title: "Account closed successfully",
-                                  description: "The token account has been closed"
-                                });
-                              } catch (err) {
-                                const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-                                toast({
-                                  title: "Error closing account",
-                                  description: errorMessage,
-                                  variant: "destructive"
-                                });
-                              } finally {
-                                setClosing(false);
-                              }
-                            }}
-                            isClosing={closing}
-                            userSolBalance={userSolBalance}
-                          />
-                        </motion.div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-
-                {/* Update pagination visibility condition */}
-                {filteredAccounts.length > ITEMS_PER_PAGE && (
-                  <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm p-4">
-                    <div className="container mx-auto">
-                      <Pagination>
-                        <PaginationContent>
-                          <PaginationItem>
-                            <PaginationPrevious
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                setCurrentPage(p => Math.max(1, p - 1))
-                              }}
-                              className={currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}
-                            />
-                          </PaginationItem>
-                          {Array.from({ length: totalPages }, (_, i) => (
-                            <PaginationItem key={i}>
-                              <PaginationLink
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  setCurrentPage(i + 1)
-                                }}
-                                isActive={currentPage === i + 1}
-                              >
-                                {i + 1}
-                              </PaginationLink>
-                            </PaginationItem>
-                          ))}
-                          <PaginationItem>
-                            <PaginationNext
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                setCurrentPage(p => Math.min(totalPages, p + 1))
-                              }}
-                              className={currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}
-                            />
-                          </PaginationItem>
-                        </PaginationContent>
-                      </Pagination>
-                    </div>
-                  </div>
+                {publicKey && accounts.length > 0 && (
+                  <>
+                    <AccountStats
+                      accounts={accounts}
+                      isTokenHolder={isTokenHolder}
+                    />
+                    <ScanResultsPanel
+                      isOpen={showScanResults}
+                      onToggle={() => setShowScanResults(!showScanResults)}
+                      accounts={paginatedAccounts}
+                      onClose={async (pubkey) => {
+                        setClosing(true);
+                        try {
+                          await closeTokenAccount(
+                            connection,
+                            publicKey,
+                            pubkey,
+                            sendTransaction
+                          );
+                          await scanAccounts();
+                          toast({
+                            title: "Account closed successfully",
+                            description: "The token account has been closed"
+                          });
+                        } catch (err) {
+                          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                          toast({
+                            title: "Error closing account",
+                            description: errorMessage,
+                            variant: "destructive"
+                          });
+                        } finally {
+                          setClosing(false);
+                        }
+                      }}
+                      isClosing={closing}
+                      userSolBalance={userSolBalance}
+                      onCloseAll={closeAccounts}
+                    />
+                  </>
                 )}
               </div>
             ) : (
@@ -744,14 +617,14 @@ export default function Component() {
       </main>
 
       {/* Fixed footer */}
-      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
+      <footer className="fixed bottom-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
               <p>Built with ❤️ for the Solana community</p>
             </div>
-            
+
             <div className="flex items-center gap-4 sm:gap-6">
               <a
                 href="mailto:support@solana.reclaims"
@@ -759,7 +632,7 @@ export default function Component() {
               >
                 support@solana.reclaims
               </a>
-              
+
               <a
                 href="https://twitter.com/kisra_fistya"
                 target="_blank"
@@ -784,45 +657,45 @@ export default function Component() {
 
       {showMessageInput && (
         <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
         >
-            <motion.div
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                className="bg-purple-900/50 p-6 rounded-xl border border-purple-500/20 max-w-md w-full mx-4"
-            >
-                <h3 className="text-xl font-bold text-purple-300 mb-4">Add Personal Message</h3>
-                <input
-                    type="text"
-                    value={personalMessage}
-                    onChange={handleMessageChange}
-                    placeholder="Enter your message (optional)"
-                    className="w-full bg-black/50 border border-purple-500/20 rounded-lg px-4 py-2 text-purple-300 placeholder:text-purple-300/50 focus:outline-none focus:border-purple-500/50"
-                    maxLength={100}
-                />
-                {messageError && <p className="text-red-400 text-sm mt-2">{messageError}</p>}
-                <div className="flex justify-end gap-4 mt-6">
-                    <Button
-                        variant="ghost"
-                        onClick={() => {
-                            setShowMessageInput(false);
-                            setPersonalMessage('');
-                        }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            setShowMessageInput(false);
-                            closeAccounts();
-                        }}
-                    >
-                        Continue
-                    </Button>
-                </div>
-            </motion.div>
+          <motion.div
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            className="bg-purple-900/50 p-6 rounded-xl border border-purple-500/20 max-w-md w-full mx-4"
+          >
+            <h3 className="text-xl font-bold text-purple-300 mb-4">Add Personal Message</h3>
+            <input
+              type="text"
+              value={personalMessage}
+              onChange={handleMessageChange}
+              placeholder="Enter your message (optional)"
+              className="w-full bg-black/50 border border-purple-500/20 rounded-lg px-4 py-2 text-purple-300 placeholder:text-purple-300/50 focus:outline-none focus:border-purple-500/50"
+              maxLength={100}
+            />
+            {messageError && <p className="text-red-400 text-sm mt-2">{messageError}</p>}
+            <div className="flex justify-end gap-4 mt-6">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowMessageInput(false);
+                  setPersonalMessage('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowMessageInput(false);
+                  closeAccounts();
+                }}
+              >
+                Continue
+              </Button>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </div>

@@ -231,9 +231,28 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
 
 async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
   try {
-    const response = await fetch(`https://token-list-api.solana.cloud/v1/token/${mint}`);
+    const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'my-id',
+        method: 'getAsset',
+        params: [mint]
+      })
+    });
+    
     if (!response.ok) return null;
-    return await response.json();
+    const data = await response.json();
+    
+    return {
+      name: data.result.content.metadata.name,
+      symbol: data.result.content.metadata.symbol,
+      logoURI: data.result.content.files?.[0]?.uri,
+      usdValue: data.result.token_info?.price_info?.price_per_token || 0,
+      decimals: data.result.content.metadata.decimals,
+      address: mint
+    };
   } catch (error) {
     logger.error('Error fetching token metadata', { error, mint });
     return null;
