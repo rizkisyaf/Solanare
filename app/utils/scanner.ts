@@ -58,44 +58,11 @@ const KNOWN_PROGRAMS = {
 
 export async function scanTokenAccounts(connection: Connection, publicKey: PublicKey): Promise<TokenAccount[]> {
   try {
-    // First get native SOL account
-    const solAccount = await connection.getAccountInfo(publicKey);
     const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
       programId: TOKEN_PROGRAM_ID
     });
 
-    const tokenAccountsPromises = [];
-
-    // Add native SOL account if it exists
-    if (solAccount) {
-      const solMetadata = {
-        name: 'Solana',
-        symbol: 'SOL',
-        usdValue: await getSolPrice(),
-        decimals: 9
-      };
-
-      tokenAccountsPromises.push({
-        pubkey: publicKey,
-        mint: 'So11111111111111111111111111111111111111112',
-        balance: solAccount.lamports / 1e9,
-        type: 'token' as const,
-        programId: TOKEN_PROGRAM_ID,
-        isCloseable: false,
-        isAssociated: true,
-        isMintable: false,
-        hasFreezingAuthority: false,
-        isFrozen: false,
-        tokenInfo: {
-          name: solMetadata.name,
-          symbol: solMetadata.symbol,
-          usdValue: solMetadata.usdValue
-        }
-      });
-    }
-
-    // Add other token accounts
-    const otherTokenAccounts = accounts.value.map(async account => {
+    const tokenAccountsPromises = accounts.value.map(async account => {
       const parsedInfo = account.account.data.parsed.info;
       const mint = parsedInfo.mint;
       const metadata = await getTokenMetadata(connection, mint);
@@ -121,10 +88,7 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
       };
     });
 
-    tokenAccountsPromises.push(...otherTokenAccounts);
-    const tokenAccounts = await Promise.all(tokenAccountsPromises);
-    return tokenAccounts;
-
+    return Promise.all(tokenAccountsPromises);
   } catch (error) {
     logger.error('Error scanning token accounts', { error });
     return [];
@@ -239,7 +203,6 @@ async function scanUnknownAccounts(connection: Connection, publicKey: PublicKey)
     return [];
   }
 }
-
 function calculatePotentialSOL(accounts: ScanResults): number {
   const allAccounts = [
     ...accounts.tokenAccounts,
