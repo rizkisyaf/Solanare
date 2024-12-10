@@ -14,16 +14,16 @@ export async function closeTokenAccount(
   // First burn any remaining tokens
   const accountInfo = await connection.getParsedAccountInfo(tokenAccount);
   const parsedInfo = (accountInfo.value?.data as ParsedAccountData).parsed.info;
-  const balance = parsedInfo?.tokenAmount?.uiAmount || 0;
+  const balance = parsedInfo?.tokenAmount?.amount || 0;
   
   const transaction = new Transaction();
   
-  if (balance > 0) {
+  if (Number(balance) > 0) {
     const burnInstruction = createBurnInstruction(
       tokenAccount,
       parsedInfo.mint,
       wallet,
-      balance,
+      BigInt(balance),
       []
     );
     transaction.add(burnInstruction);
