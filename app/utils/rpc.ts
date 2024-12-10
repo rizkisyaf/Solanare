@@ -1,13 +1,19 @@
 import { Commitment, Connection } from '@solana/web3.js'
 import { logger } from './logger'
 
-const MAX_RETRIES = 0
-const RETRY_DELAY = 2000
+const MAX_RETRIES = 0  // Per Helius best practices
 const RATE_LIMIT_COOLDOWN = 30000
 
 export function getConnection(commitment: Commitment = 'processed') {
+  const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY
+  if (!apiKey) {
+    throw new Error('NEXT_PUBLIC_HELIUS_API_KEY is not defined')
+  }
+
+  const endpoint = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`
+
   return new Connection(
-    process.env.NEXT_PUBLIC_RPC_ENDPOINT!,
+    endpoint,
     {
       commitment,
       confirmTransactionInitialTimeout: 60000,
@@ -31,6 +37,7 @@ export function getConnection(commitment: Commitment = 'processed') {
             throw new Error(`HTTP error! status: ${response.status}`)
           }
 
+          // Log staked connection status per Helius best practices
           const connectionType = response.headers.get('X-Helius-ConnectionType')
           if (connectionType) {
             logger.info('Helius connection type:', { type: connectionType })
