@@ -1,6 +1,7 @@
 import { motion } from "framer-motion"
 import { Button } from "./ui/button"
 import { RENT_AFTER_FEE } from "../app/utils/constants"
+import { TransactionMemo } from './TransactionMemo';
 
 interface ReclaimCardProps {
   totalAccounts: number
@@ -9,9 +10,10 @@ interface ReclaimCardProps {
   onShare: () => void
   personalMessage?: string
   isTokenHolder?: boolean
+  signature?: string;
 }
 
-export function ReclaimCard({ totalAccounts, totalReclaimed, walletAddress, onShare, personalMessage, isTokenHolder }: ReclaimCardProps) {
+export function ReclaimCard({ totalAccounts, totalReclaimed, walletAddress, onShare, personalMessage, isTokenHolder, signature }: ReclaimCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -65,6 +67,7 @@ export function ReclaimCard({ totalAccounts, totalReclaimed, walletAddress, onSh
           </div>
         </div>
       </div>
+      {signature && <TransactionMemo signature={signature} />}
     </motion.div>
   )
 } 

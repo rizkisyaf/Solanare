@@ -25,7 +25,19 @@ interface ReclaimRecord {
   timestamp: string
   tokenHolder: boolean
   personalMessage?: string
+  signature?: string
 }
+
+const fetchMemoData = async (signature: string) => {
+  try {
+    const response = await fetch(`/api/transactions/${signature}`);
+    const data = await response.json();
+    return data.memo;
+  } catch (error) {
+    console.error('Error fetching memo:', error);
+    return null;
+  }
+};
 
 export default function MuseumPage() {
   const [reclaims, setReclaims] = useState<ReclaimRecord[]>([])
@@ -217,6 +229,7 @@ export default function MuseumPage() {
                       onShare={() => handleShare(reclaim.id, reclaim.tokenHolder)}
                       isTokenHolder={reclaim.tokenHolder}
                       personalMessage={reclaim.personalMessage}
+                      signature={reclaim.signature}
                     />
                   </motion.div>
                 ))}

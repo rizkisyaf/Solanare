@@ -165,30 +165,24 @@ export default function Component() {
 
     setClosing(true);
     try {
+      const signatures = [];
+      
       for (const account of accounts.filter(a => a.isCloseable)) {
         const accountPubkey = account.pubkey instanceof PublicKey 
           ? account.pubkey 
           : new PublicKey(account.pubkey);
         
-        await closeTokenAccount(
+        const signature = await closeTokenAccount(
           connection,
           publicKey,
           accountPubkey,
-          sendTransaction
+          sendTransaction,
+          isTokenHolder
         );
+        signatures.push(signature);
       }
 
-      await scanAccounts();
-      setShowBigConfetti(true);
-      setShowScanResults(false);
-      toast({
-        title: "Success! 🎉",
-        description: "All SOL has been sent to your wallet",
-        className: "bg-green-500/20 border-green-500/20"
-      });
-      setTimeout(() => setShowBigConfetti(false), 5000)
-
-      // Save to museum if eligible
+      // Save to museum with signatures
       if (accounts.length > 0) {
         await fetch('/api/reclaims', {
           method: 'POST',
@@ -198,10 +192,20 @@ export default function Component() {
             totalReclaimed: getTotalReclaimAmount(accounts),
             walletAddress: publicKey.toString(),
             tokenHolder: isTokenHolder,
-            personalMessage: isTokenHolder ? personalMessage : undefined
+            personalMessage: isTokenHolder ? personalMessage : undefined,
+            signatures
           })
         });
       }
+      await scanAccounts();
+      setShowBigConfetti(true);
+      setShowScanResults(false);
+      toast({
+        title: "Success! 🎉",
+        description: "All SOL has been sent to your wallet",
+        className: "bg-green-500/20 border-green-500/20"
+      });
+      setTimeout(() => setShowBigConfetti(false), 5000)
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
