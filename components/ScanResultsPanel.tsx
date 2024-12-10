@@ -36,13 +36,13 @@ export function ScanResultsPanel({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm"
+        className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         <div className="absolute inset-0 flex flex-col max-h-screen">
-          <div className="sticky top-0 z-50 bg-purple-950/95 p-4 border-b border-purple-500/20">
+          <div className="top-0 z-50 bg-purple-950/95 p-4 border-b border-purple-500/20">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-purple-300">
                 Found {accounts.length} Accounts

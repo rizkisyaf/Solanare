@@ -162,10 +162,10 @@ export default function Component() {
   const scanAccounts = async () => {
     if (!publicKey) return;
     setLoading(true);
-    
+
     try {
       const scanResults = await scanAllAccounts(connection, publicKey);
-      
+
       if (scanResults) {
         const allAccounts = [
           ...scanResults.tokenAccounts,
@@ -181,7 +181,7 @@ export default function Component() {
             usdValue: 0
           }
         })) as BaseAccount[];
-        
+
         setAccounts(allAccounts);
         setSecurityCheck(await checkTransactionSecurity(connection, publicKey, { accounts: scanResults }));
       }
@@ -261,7 +261,7 @@ export default function Component() {
   return (
     <div className="relative min-h-screen flex flex-col bg-black">
       <StarField />
-      
+
       {/* Base content */}
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Cosmic Dust */}
@@ -504,48 +504,6 @@ export default function Component() {
                       </Button>
                     )}
                   </div>
-
-                  {publicKey && accounts.length > 0 && (
-                    <>
-                      <AccountStats
-                        accounts={accounts as BaseAccount[]}
-                        isTokenHolder={isTokenHolder}
-                      />
-                      <ScanResultsPanel
-                        isOpen={showScanResults}
-                        onToggle={() => setShowScanResults(!showScanResults)}
-                        accounts={accounts}
-                        onClose={async (pubkey) => {
-                          setClosing(true);
-                          try {
-                            await closeTokenAccount(
-                              connection,
-                              publicKey,
-                              pubkey,
-                              sendTransaction
-                            );
-                            await scanAccounts();
-                            toast({
-                              title: "Account closed successfully",
-                              description: "The token account has been closed"
-                            });
-                          } catch (err) {
-                            const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-                            toast({
-                              title: "Error closing account",
-                              description: errorMessage,
-                              variant: "destructive"
-                            });
-                          } finally {
-                            setClosing(false);
-                          }
-                        }}
-                        isClosing={closing}
-                        userSolBalance={userSolBalance}
-                        onCloseAll={closeAccounts}
-                      />
-                    </>
-                  )}
                 </div>
               ) : (
                 <motion.div
@@ -601,7 +559,7 @@ export default function Component() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
-              <p>Built with ️ for the Solana community</p>
+              <p>Built with ❤️ for the Solana community</p>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6">
@@ -633,6 +591,48 @@ export default function Component() {
         isScanning={loading}
         securityCheck={securityCheck}
       />
+
+      {publicKey && accounts.length > 0 && (
+        <>
+          <AccountStats
+            accounts={accounts as BaseAccount[]}
+            isTokenHolder={isTokenHolder}
+          />
+          <ScanResultsPanel
+            isOpen={showScanResults}
+            onToggle={() => setShowScanResults(!showScanResults)}
+            accounts={accounts}
+            onClose={async (pubkey) => {
+              setClosing(true);
+              try {
+                await closeTokenAccount(
+                  connection,
+                  publicKey,
+                  pubkey,
+                  sendTransaction
+                );
+                await scanAccounts();
+                toast({
+                  title: "Account closed successfully",
+                  description: "The token account has been closed"
+                });
+              } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                toast({
+                  title: "Error closing account",
+                  description: errorMessage,
+                  variant: "destructive"
+                });
+              } finally {
+                setClosing(false);
+              }
+            }}
+            isClosing={closing}
+            userSolBalance={userSolBalance}
+            onCloseAll={closeAccounts}
+          />
+        </>
+      )}
 
       {showMessageInput && (
         <motion.div
