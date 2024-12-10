@@ -82,7 +82,12 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
         isMintable: false,
         hasFreezingAuthority: false,
         isFrozen: false,
-        tokenInfo: metadata
+        tokenInfo: metadata ? {
+          name: metadata.name,
+          symbol: metadata.symbol,
+          logoURI: metadata.logoURI,
+          usdValue: metadata.usdValue
+        } : undefined
       };
     });
 
@@ -231,26 +236,36 @@ function assessRiskLevel(accounts: ScanResults): 'low' | 'medium' | 'high' {
 
 async function getTokenMetadata(mint: string): Promise<TokenMetadata | null> {
   try {
-    const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`, {
+    const url = `https://mainnet.helius-rpc.com/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`;
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: 'my-id',
+        id: 'metadata-request',
         method: 'getAsset',
-        params: [mint]
-      })
+        params: {
+          id: mint,
+          displayOptions: {
+            showFungible: true
+          }
+        },
+      }),
     });
-    
+
     if (!response.ok) return null;
-    const data = await response.json();
+    const { result } = await response.json();
     
+    if (!result) return null;
+
     return {
-      name: data.result.content.metadata.name,
-      symbol: data.result.content.metadata.symbol,
-      logoURI: data.result.content.files?.[0]?.uri,
-      usdValue: data.result.token_info?.price_info?.price_per_token || 0,
-      decimals: data.result.content.metadata.decimals,
+      name: result.content?.metadata?.name || 'Unknown',
+      symbol: result.content?.metadata?.symbol || 'Unknown',
+      logoURI: result.content?.files?.[0]?.uri || null,
+      usdValue: result.token_info?.price_info?.price_per_token || 0,
+      decimals: result.content?.metadata?.decimals || 0,
       address: mint
     };
   } catch (error) {
