@@ -22,12 +22,6 @@ import Link from 'next/link'
 import { AccountStats } from '@/components/AccountStats'
 import { ScanResultsPanel } from '@/components/ScanResultsPanel'
 
-interface TokenInfo {
-  name: string
-  symbol: string
-  logoURI?: string
-  usdValue?: number
-}
 
 interface BaseAccount {
   pubkey: PublicKey
@@ -45,37 +39,12 @@ interface BaseAccount {
   }
 }
 
-interface TokenAccount extends BaseAccount {
-  type: 'token'
-  isAssociated?: boolean
-  isMintable?: boolean
-  hasFreezingAuthority?: boolean
-  isFrozen?: boolean
-}
-
-interface OpenOrderAccount extends BaseAccount {
-  type: 'openOrder'
-}
-
-interface UndeployedAccount extends BaseAccount {
-  type: 'undeployed'
-}
-
-interface UnknownAccount extends BaseAccount {
-  type: 'unknown'
-}
-
-// Move WalletMultiButton import here
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletMultiButton),
   { ssr: false }
 )
 
-// Add these constants at the top with other constants
-const ITEMS_PER_PAGE = 10 // Reduced from 15 for better UX
-
 export default function Component() {
-  // Group all useState hooks together
   const [mounted, setMounted] = useState(false)
   const [accounts, setAccounts] = useState<BaseAccount[]>([])
   const [loading, setLoading] = useState(false)
@@ -88,13 +57,6 @@ export default function Component() {
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
   const [showScanResults, setShowScanResults] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const paginatedAccounts = accounts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  // Group all refs and context hooks
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { toast } = useToast()
@@ -109,7 +71,6 @@ export default function Component() {
     setPersonalMessage(message)
   }
 
-  // Mounting effect
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -197,13 +158,6 @@ export default function Component() {
     }
   };
 
-  const handlePreClose = () => {
-    if (isTokenHolder) {
-      setShowMessageInput(true);
-    } else {
-      closeAccounts();
-    }
-  };
 
   const closeAccounts = async () => {
     if (!publicKey || !connection) return;
@@ -349,7 +303,18 @@ export default function Component() {
                     $SOLANARE Token
                   </h3>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                    <div className="w-full sm:w-auto group relative">
+                    <div className="w-full sm:w-auto group relative cursor-pointer"
+                      onClick={() => {
+                        navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
+                        trackEvent('token_address_clicked', {
+                          source: 'address_display'
+                        });
+                        toast({
+                          title: "Address Copied",
+                          description: "Token address copied to clipboard",
+                        });
+                      }}
+                    >
                       <code className="block w-full sm:w-auto bg-black/30 px-3 py-2 rounded-lg text-purple-300 font-mono text-xs sm:text-sm break-all sm:break-normal">
                         14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume
                       </code>
@@ -362,11 +327,14 @@ export default function Component() {
                       size="icon"
                       className="hidden md:flex h-8 w-8 text-purple-400 hover:text-purple-300 shrink-0"
                       onClick={() => {
-                        navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
+                        navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
+                        trackEvent('token_address_copied', {
+                          source: 'desktop_button'
+                        });
                         toast({
                           title: "Address Copied",
                           description: "Token address copied to clipboard",
-                        })
+                        });
                       }}
                     >
                       <svg
@@ -389,14 +357,16 @@ export default function Component() {
                     <div className="flex items-center gap-2 sm:hidden">
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-purple-400 hover:text-purple-300"
+                        className="md:hidden text-sm text-purple-400 hover:text-purple-300"
                         onClick={() => {
-                          navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume")
+                          navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
+                          trackEvent('token_address_copied', {
+                            source: 'mobile_button'
+                          });
                           toast({
                             title: "Address Copied",
                             description: "Token address copied to clipboard",
-                          })
+                          });
                         }}
                       >
                         <svg
@@ -459,10 +429,15 @@ export default function Component() {
                   <input
                     type="text"
                     value={personalMessage}
-                    onChange={handleMessageChange}
+                    onChange={(e) => {
+                      handleMessageChange(e);
+                      trackEvent('personal_message_input', {
+                        messageLength: e.target.value.length,
+                        isTokenHolder
+                      });
+                    }}
                     maxLength={100}
-                    className={`w-full bg-black/30 border ${messageError ? 'border-red-500' : 'border-purple-500/20'
-                      } rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
+                    className={`w-full bg-black/30 border ${messageError ? 'border-red-500' : 'border-purple-500/20'} rounded-lg px-4 py-2 text-purple-300 placeholder-purple-300/50`}
                     placeholder="Add your personal message (Token Holder Exclusive)"
                   />
                   {messageError && (
@@ -475,9 +450,15 @@ export default function Component() {
                 <div className="space-y-8">
                   <div className="flex justify-center gap-4">
                     <Button
-                      onClick={scanAccounts}
-                      disabled={loading}
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                      onClick={() => {
+                        trackEvent('scan_accounts_clicked', {
+                          walletConnected: !!publicKey,
+                          previousScanResults: accounts.length
+                        });
+                        scanAccounts();
+                      }}
+                      disabled={loading || !publicKey}
+                      className="relative px-8 py-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl text-lg font-semibold"
                     >
                       {loading ? "Scanning..." : "Scan Accounts"}
                     </Button>
@@ -485,24 +466,6 @@ export default function Component() {
                       A {isTokenHolder ? '3' : '5'}% platform fee applies to reclaimed SOL
                       {isCheckingTokenHolder && <span className="ml-2 animate-pulse">Checking status...</span>}
                     </div>
-                    {accounts.length > 0 && (
-                      <Button
-                        onClick={handlePreClose}
-                        disabled={
-                          closing ||
-                          !accounts.some(account => account.isCloseable) ||
-                          getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM
-                        }
-                        className="bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-2 px-6 rounded-full hover:shadow-lg hover:shadow-red-500/30 transition-all relative group"
-                      >
-                        {closing ? "Closing..." : `Close ${accounts.filter(a => a.isCloseable).length} Accounts`}
-                        {getTotalReclaimAmount(accounts) < MIN_VIABLE_RECLAIM && (
-                          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-xs text-white px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                            Total reclaim amount (${getTotalReclaimAmount(accounts).toFixed(4)} SOL) is below minimum (${MIN_VIABLE_RECLAIM} SOL)
-                          </div>
-                        )}
-                      </Button>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -529,6 +492,7 @@ export default function Component() {
             <div className="flex items-center justify-around h-16">
               <Link
                 href="/"
+                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'home' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🏠</span>
@@ -536,6 +500,7 @@ export default function Component() {
               </Link>
               <Link
                 href="/museum"
+                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'museum' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🏛️</span>
@@ -543,6 +508,7 @@ export default function Component() {
               </Link>
               <Link
                 href="/bump"
+                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'bump' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🚀</span>
@@ -565,6 +531,7 @@ export default function Component() {
             <div className="flex items-center gap-4 sm:gap-6">
               <a
                 href="mailto:support@solana.reclaims"
+                onClick={() => trackEvent('support_email_clicked')}
                 className="text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
                 support@solana.reclaims
@@ -574,6 +541,7 @@ export default function Component() {
                 href="https://twitter.com/kisra_fistya"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent('twitter_link_clicked')}
                 className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
                 <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-4 sm:w-4 fill-current">
@@ -600,7 +568,13 @@ export default function Component() {
           />
           <ScanResultsPanel
             isOpen={showScanResults}
-            onToggle={() => setShowScanResults(!showScanResults)}
+            onToggle={() => {
+              setShowScanResults(!showScanResults);
+              trackEvent('scan_results_panel_toggle', {
+                action: !showScanResults ? 'expand' : 'collapse',
+                accountsCount: accounts.length
+              });
+            }}
             accounts={accounts}
             onClose={async (pubkey) => {
               setClosing(true);
@@ -612,12 +586,20 @@ export default function Component() {
                   sendTransaction
                 );
                 await scanAccounts();
+                trackEvent('close_single_account', {
+                  success: true,
+                  accountAddress: pubkey.toString()
+                });
                 toast({
                   title: "Account closed successfully",
                   description: "The token account has been closed"
                 });
               } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+                trackEvent('close_single_account', {
+                  success: false,
+                  error: errorMessage
+                });
                 toast({
                   title: "Error closing account",
                   description: errorMessage,
@@ -629,7 +611,12 @@ export default function Component() {
             }}
             isClosing={closing}
             userSolBalance={userSolBalance}
-            onCloseAll={closeAccounts}
+            onCloseAll={() => {
+              trackEvent('close_all_accounts_initiated', {
+                accountsCount: accounts.length
+              });
+              closeAccounts();
+            }}
           />
         </>
       )}
@@ -649,7 +636,13 @@ export default function Component() {
             <input
               type="text"
               value={personalMessage}
-              onChange={handleMessageChange}
+              onChange={(e) => {
+                handleMessageChange(e);
+                trackEvent('personal_message_input', {
+                  messageLength: e.target.value.length,
+                  isTokenHolder
+                });
+              }}
               placeholder="Enter your message (optional)"
               className="w-full bg-black/50 border border-purple-500/20 rounded-lg px-4 py-2 text-purple-300 placeholder:text-purple-300/50 focus:outline-none focus:border-purple-500/50"
               maxLength={100}
@@ -659,6 +652,7 @@ export default function Component() {
               <Button
                 variant="ghost"
                 onClick={() => {
+                  trackEvent('message_input_cancelled');
                   setShowMessageInput(false);
                   setPersonalMessage('');
                 }}
@@ -667,6 +661,10 @@ export default function Component() {
               </Button>
               <Button
                 onClick={() => {
+                  trackEvent('message_input_submitted', {
+                    messageLength: personalMessage.length,
+                    isTokenHolder
+                  });
                   setShowMessageInput(false);
                   closeAccounts();
                 }}

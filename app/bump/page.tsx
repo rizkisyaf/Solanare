@@ -200,7 +200,14 @@ export default function BumpPage() {
                                                 min="0.01"
                                                 step="0.01"
                                                 value={bumpAmount}
-                                                onChange={(e) => setBumpAmount(Math.max(0.01, Number(e.target.value)))}
+                                                onChange={(e) => {
+                                                    const newAmount = Math.max(0.01, Number(e.target.value));
+                                                    setBumpAmount(newAmount);
+                                                    trackEvent('bump_amount_changed', {
+                                                        amount: newAmount,
+                                                        isHolder
+                                                    });
+                                                }}
                                                 className="w-20 md:w-24 px-2 md:px-3 py-1.5 md:py-2 bg-purple-900/20 border border-purple-500/20 rounded-lg text-purple-300 focus:outline-none focus:border-purple-500 text-sm md:text-base"
                                             />
                                             <span className="text-purple-300 text-sm md:text-base">SOL</span>
@@ -263,6 +270,10 @@ export default function BumpPage() {
                                                 href={`https://solscan.io/tx/${bump.signature}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
+                                                onClick={() => trackEvent('view_transaction_clicked', {
+                                                    signature: bump.signature,
+                                                    isHolder: bump.isHolder
+                                                })}
                                                 className="text-xs text-purple-300/50 hover:text-purple-300 transition-colors"
                                             >
                                                 View Transaction ↗

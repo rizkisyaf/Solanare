@@ -36,7 +36,7 @@ export function ScanResultsPanel({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed bottom-0 right-0 z-[99999] w-full md:w-[600px] bg-black/80 backdrop-blur-sm"
+        className="fixed bottom-10 right-0 z-[99999] w-full md:w-[600px] bg-black/80 backdrop-blur-sm"
         initial={{ y: "100%" }}
         animate={{ y: isOpen ? "0%" : "calc(100% - 48px)" }}
         transition={{ type: "spring", bounce: 0.2 }}

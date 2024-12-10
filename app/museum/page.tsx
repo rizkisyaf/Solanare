@@ -10,6 +10,7 @@ import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { StarField } from '@/components/StarField'
 import Link from 'next/link'
+import { useAnalytics } from "@/app/hooks/useAnalytics"
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then(mod => mod.WalletMultiButton),
@@ -30,6 +31,8 @@ export default function MuseumPage() {
   const [reclaims, setReclaims] = useState<ReclaimRecord[]>([])
   const [_loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const { publicKey } = useWallet()
+  const { trackEvent } = useAnalytics()
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   useEffect(() => {
@@ -49,6 +52,12 @@ export default function MuseumPage() {
   }
 
   const handleShare = async (reclaimId: string, isTokenHolder: boolean) => {
+    trackEvent('reclaim_share_initiated', {
+      id: reclaimId,
+      is_token_holder: isTokenHolder,
+      share_type: isTokenHolder ? 'download' : 'share'
+    });
+    
     const cardElement = cardRefs.current[reclaimId]
     if (!cardElement) return
 
@@ -78,17 +87,32 @@ export default function MuseumPage() {
           title: 'My Solana Reclaim',
           text: 'Check out my Solana token account reclaim on Solanare!'
         })
+        trackEvent('reclaim_share_success', {
+          id: reclaimId,
+          is_token_holder: isTokenHolder,
+          share_method: 'native'
+        });
       } else {
         // Fallback to clipboard
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ])
+        trackEvent('reclaim_share_success', {
+          id: reclaimId,
+          is_token_holder: isTokenHolder,
+          share_method: 'clipboard'
+        });
         toast({
           title: "Image Copied!",
           description: "Share image copied to clipboard"
         })
       }
     } catch (error) {
+      trackEvent('reclaim_share_error', {
+        id: reclaimId,
+        is_token_holder: isTokenHolder,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       console.error('Error sharing/downloading:', error)
       toast({
         title: "Error",
@@ -113,7 +137,11 @@ export default function MuseumPage() {
             <div className="flex items-center justify-between h-14 md:h-16">
               <div className="flex items-center gap-2 md:gap-6">
                 <div className="flex items-center gap-2">
-                  <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <Link
+                    href="/"
+                    onClick={() => trackEvent('navigation_clicked', { page: 'home' })}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
                     <Image
                       src="/voidora-logo.svg"
                       alt="Voidora Logo"
@@ -125,7 +153,15 @@ export default function MuseumPage() {
                   </Link>
                 </div>
               </div>
-              <WalletMultiButton className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-3 !py-1.5 !text-sm md:!text-base md:!px-4 md:!py-2" />
+              <WalletMultiButton 
+                onClick={() => {
+                  trackEvent('wallet_button_clicked', {
+                    page: window.location.pathname,
+                    walletConnected: !!publicKey
+                  });
+                }}
+                className="!bg-gradient-to-r from-purple-500 to-blue-500 !rounded-full !px-4 !py-2 !text-sm md:!text-base" 
+              />
             </div>
           </div>
         </nav>
@@ -171,7 +207,7 @@ export default function MuseumPage() {
                   >
                     {reclaim.tokenHolder && (
                       <div className="absolute -top-3 -right-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-1 rounded-full text-sm font-medium shadow-lg">
-                        Token Holder 💎
+                        Token Holder 
                       </div>
                     )}
                     <ReclaimCard
