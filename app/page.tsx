@@ -513,7 +513,13 @@ export default function Component() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
               <p>© 2024 Solanare. All rights reserved.</p>
-              <p>Built with ❤️ for the Solana community</p>
+              <p>Built with ❤️ for the Solana community by <a 
+                href="https://ninuang.vercel.app" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-purple-300 transition-colors"
+                onClick={() => trackEvent('ninuang_link_clicked')}
+              >Ninuang</a></p>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6">
