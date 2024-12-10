@@ -408,28 +408,6 @@ export default function Component() {
                 </div>
               </motion.div>
 
-              <motion.div className="mb-8 space-y-4">
-                <h4 className="text-lg font-semibold text-purple-300">Token Holder Benefits</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                    <h5 className="font-medium text-purple-300 mb-2">Premium Display 💎</h5>
-                    <p className="text-sm text-purple-300/70">Featured placement in Solanare Museum with custom themes</p>
-                  </div>
-                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                    <h5 className="font-medium text-purple-300 mb-2">Reduced Platform Fees </h5>
-                    <p className="text-sm text-purple-300/70">Reduced platform fees on account closures</p>
-                  </div>
-                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                    <h5 className="font-medium text-purple-300 mb-2">Custom Messages ✍</h5>
-                    <p className="text-sm text-purple-300/70">Add personal messages to your reclaim cards</p>
-                  </div>
-                  <div className="bg-purple-900/20 p-4 rounded-lg border border-purple-500/20">
-                    <h5 className="font-medium text-purple-300 mb-2">Priority Support 🎯</h5>
-                    <p className="text-sm text-purple-300/70">Direct access to developer support</p>
-                  </div>
-                </div>
-              </motion.div>
-
               {isTokenHolder && (
                 <div className="mb-4">
                   <label className="block text-sm text-purple-300 mb-2">Personal Message</label>
