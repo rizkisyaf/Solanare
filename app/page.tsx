@@ -617,7 +617,7 @@ export default function Component() {
       </main>
 
       {/* Fixed footer */}
-      <footer className="fixed bottom-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
+      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-black/80 backdrop-blur-sm border-t border-purple-500/20">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
             <div className="text-xs sm:text-sm text-purple-300/50 text-center sm:text-left">
