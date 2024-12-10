@@ -172,9 +172,27 @@ async function scanUnknownAccounts(connection: Connection, publicKey: PublicKey)
     const accountInfo = await connection.getAccountInfo(publicKey)
     if (!accountInfo) return []
 
-    const knownProgramIds = Object.values(KNOWN_PROGRAMS)
+    const knownProgramIds = [...Object.values(KNOWN_PROGRAMS), TOKEN_PROGRAM_ID]
     const unknownAccounts: UnknownAccount[] = []
 
+    // Special handling for native SOL account
+    if (accountInfo.owner.toString() === '11111111111111111111111111111111') {
+      return [{
+        pubkey: publicKey,
+        mint: 'So11111111111111111111111111111111111111112', // Native SOL mint address
+        balance: accountInfo.lamports / 1e9,
+        type: 'unknown' as const,
+        programId: accountInfo.owner,
+        isCloseable: false,
+        tokenInfo: {
+          name: 'Solana',
+          symbol: 'SOL',
+          usdValue: await getSolPrice()
+        }
+      }];
+    }
+
+    // Handle other unknown accounts
     if (!knownProgramIds.some(id => id.equals(accountInfo.owner))) {
       unknownAccounts.push({
         pubkey: publicKey,
@@ -184,22 +202,12 @@ async function scanUnknownAccounts(connection: Connection, publicKey: PublicKey)
         programId: accountInfo.owner,
         isCloseable: true,
         closeWarning: ''
-      })
+      });
     }
 
-    return unknownAccounts
+    return unknownAccounts;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Error scanning unknown accounts', {
-      error: {
-        message: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined
-      },
-      details: {
-        publicKey: publicKey.toString(),
-        operation: 'scanUnknownAccounts'
-      }
-    });
+    logger.error('Error scanning unknown accounts', { error });
     return [];
   }
 }
