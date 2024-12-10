@@ -12,7 +12,6 @@ interface TokenAccountsTableProps {
     tokenInfo?: {
       name: string
       symbol: string
-      logoURI?: string
       usdValue?: number
     }
   }[]
@@ -54,20 +53,17 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
             <tr key={account.pubkey.toString()} className="border-b border-purple-500/10">
               <td className="p-4">
                 <div className="flex items-center gap-3">
-                  {account.tokenInfo?.logoURI ? (
-                    <Image 
-                      src={account.tokenInfo.logoURI}
-                      alt={account.tokenInfo.symbol || 'token'}
-                      width={24}
-                      height={24}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 bg-purple-500/20 rounded-full" />
-                  )}
                   <div>
-                    <p className="font-medium">{account.tokenInfo?.symbol || 'Unknown'}</p>
-                    <p className="text-xs text-purple-300/50">{account.tokenInfo?.name || 'Unknown Token'}</p>
+                    <p className="font-medium">
+                      {account.mint === 'So11111111111111111111111111111111111111112' ? 'SOL' :
+                       account.mint === 'So11111111111111111111111111111111111111113' ? 'WSOL' :
+                       account.tokenInfo?.symbol || 'Unknown'}
+                    </p>
+                    <p className="text-xs text-purple-300/50">
+                      {account.mint === 'So11111111111111111111111111111111111111112' ? 'Solana' :
+                       account.mint === 'So11111111111111111111111111111111111111113' ? 'Wrapped SOL' :
+                       account.tokenInfo?.name || 'Unknown Token'}
+                    </p>
                   </div>
                 </div>
               </td>

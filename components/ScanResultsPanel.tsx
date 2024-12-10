@@ -14,7 +14,6 @@ interface ScanResultsPanelProps {
     tokenInfo?: {
       name: string
       symbol: string
-      logoURI?: string
       usdValue?: number
     }
   }[]

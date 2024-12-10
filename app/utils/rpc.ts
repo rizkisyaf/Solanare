@@ -90,6 +90,26 @@ export async function getPriorityFee(connection: Connection): Promise<number> {
 }
 
 export async function getTokenMetadata(connection: Connection, mint: string) {
+  // Handle native SOL
+  if (mint === 'So11111111111111111111111111111111111111112') {
+    return {
+      name: 'Solana',
+      symbol: 'SOL',
+      usdValue: await getSolPrice(),
+      decimals: 9
+    };
+  }
+  
+  // Handle Wrapped SOL
+  if (mint === 'So11111111111111111111111111111111111111113') {
+    return {
+      name: 'Wrapped SOL',
+      symbol: 'WSOL',
+      usdValue: await getSolPrice(),
+      decimals: 9
+    };
+  }
+
   try {
     const response = await fetch('https://mainnet.helius-rpc.com/?api-key=' + process.env.NEXT_PUBLIC_HELIUS_API_KEY, {
       method: 'POST',
@@ -112,12 +132,23 @@ export async function getTokenMetadata(connection: Connection, mint: string) {
     return {
       name: asset.token_info?.name || asset.content?.metadata?.name || 'Unknown',
       symbol: asset.token_info?.symbol || asset.content?.metadata?.symbol || 'Unknown',
-      logoURI: asset.content?.links?.image || asset.content?.files?.[0]?.uri || null,
       usdValue: asset.token_info?.price_info?.price_per_token || 0,
       decimals: asset.token_info?.decimals || 0
     };
   } catch (error) {
     logger.error('Error fetching token metadata', { error, mint });
     return null;
+  }
+}
+
+// Add helper function to get SOL price
+async function getSolPrice(): Promise<number> {
+  try {
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+    const data = await response.json();
+    return data.solana.usd;
+  } catch (error) {
+    logger.error('Error fetching SOL price', { error });
+    return 0;
   }
 }

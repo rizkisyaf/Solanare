@@ -34,7 +34,6 @@ interface BaseAccount {
   tokenInfo?: {
     name: string
     symbol: string
-    logoURI?: string
     usdValue?: number
   }
 }
@@ -138,7 +137,6 @@ export default function Component() {
           tokenInfo: account.tokenInfo || {
             name: account.type === 'token' ? 'Unknown Token' : account.type,
             symbol: account.type === 'token' ? 'UNKNOWN' : account.type.toUpperCase(),
-            logoURI: undefined,
             usdValue: 0
           }
         })) as BaseAccount[];

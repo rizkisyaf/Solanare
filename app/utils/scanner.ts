@@ -20,7 +20,6 @@ interface BaseAccount {
   tokenInfo?: {
     name: string
     symbol: string
-    logoURI?: string
     usdValue?: number
   }
 }
@@ -83,7 +82,6 @@ export async function scanTokenAccounts(connection: Connection, publicKey: Publi
         tokenInfo: metadata ? {
           name: metadata.name,
           symbol: metadata.symbol,
-          logoURI: metadata.logoURI,
           usdValue: metadata.usdValue
         } : undefined
       };
