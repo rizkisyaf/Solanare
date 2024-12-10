@@ -16,8 +16,19 @@ interface BaseAccount {
 }
 
 interface TokenAccountsTableProps {
-  accounts: BaseAccount[];
-  onClose: (pubkey: PublicKey) => void;
+  accounts: {
+    pubkey: PublicKey | string;
+    mint: string;
+    balance: number;
+    isCloseable: boolean;
+    closeWarning?: string;
+    tokenInfo?: {
+      name: string;
+      symbol: string;
+      usdValue?: number;
+    };
+  }[];
+  onClose: (pubkey: PublicKey | string) => void;
   isClosing: boolean;
   userSolBalance: number;
 }
@@ -53,7 +64,10 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
           </thead>
           <tbody>
             {accounts.map((account) => (
-              <tr key={account.pubkey.toBase58()} className="border-b border-purple-500/10">
+              <tr 
+                key={account.pubkey instanceof PublicKey ? account.pubkey.toBase58() : account.pubkey} 
+                className="border-b border-purple-500/10"
+              >
                 <td className="p-2 md:p-4">
                   <div className="flex items-center gap-2 md:gap-3">
                     <div>

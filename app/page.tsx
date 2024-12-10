@@ -25,18 +25,17 @@ import { Confetti } from '@/components/Confetti'
 
 
 interface BaseAccount {
-  pubkey: PublicKey
-  mint: string
-  balance: number
-  programId: PublicKey
-  rentExemption: number
-  isCloseable: boolean
-  closeWarning: string
+  pubkey: PublicKey | string;
+  mint: string;
+  balance: number;
+  isCloseable: boolean;
+  closeWarning?: string;
+  rentExemption: number;
   tokenInfo?: {
-    name: string
-    symbol: string
-    usdValue?: number
-  }
+    name: string;
+    symbol: string;
+    usdValue?: number;
+  };
 }
 
 const WalletMultiButton = dynamic(
@@ -129,14 +128,14 @@ export default function Component() {
       const scanResults = await scanAllAccounts(connection, publicKey);
 
       if (scanResults) {
-        const allAccounts: BaseAccount[] = [
+        const allAccounts = [
           ...scanResults.tokenAccounts,
           ...scanResults.openOrders,
           ...scanResults.undeployedTokens,
           ...scanResults.unknownAccounts
         ].map(account => ({
           ...account,
-          pubkey: new PublicKey(account.pubkey),
+          pubkey: account.pubkey instanceof PublicKey ? account.pubkey : new PublicKey(account.pubkey),
           rentExemption: account.rentExemption || 0,
           tokenInfo: account.tokenInfo || {
             name: account.type === 'token' ? 'Unknown Token' : account.type,
@@ -167,17 +166,21 @@ export default function Component() {
     setClosing(true);
     try {
       for (const account of accounts.filter(a => a.isCloseable)) {
+        const accountPubkey = account.pubkey instanceof PublicKey 
+          ? account.pubkey 
+          : new PublicKey(account.pubkey);
+        
         await closeTokenAccount(
           connection,
           publicKey,
-          account.pubkey,
+          accountPubkey,
           sendTransaction
         );
       }
 
       await scanAccounts();
-      setShowBigConfetti(true)
-      setShowScanResults(false)
+      setShowBigConfetti(true);
+      setShowScanResults(false);
       toast({
         title: "Success! 🎉",
         description: "All SOL has been sent to your wallet",

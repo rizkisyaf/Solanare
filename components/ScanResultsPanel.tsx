@@ -8,7 +8,7 @@ interface ScanResultsPanelProps {
   isOpen: boolean
   onToggle: () => void
   accounts: {
-    pubkey: PublicKey
+    pubkey: PublicKey | string
     mint: string
     balance: number
     isCloseable: boolean
@@ -19,7 +19,7 @@ interface ScanResultsPanelProps {
       usdValue?: number
     }
   }[]
-  onClose: (pubkey: PublicKey) => void
+  onClose: (pubkey: PublicKey | string) => void
   isClosing: boolean
   userSolBalance: number
   onCloseAll: () => void
