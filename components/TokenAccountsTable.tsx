@@ -81,7 +81,7 @@ export function TokenAccountsTable({ accounts, onClose, isClosing, userSolBalanc
                     disabled={isClosing || !hasEnoughSol}
                     className="text-sm md:text-base px-3 py-1.5 md:px-4 md:py-2 bg-purple-500/20 rounded-lg hover:bg-purple-500/30 disabled:opacity-50"
                   >
-                    Close
+                    Claim
                   </button>
                   {account.closeWarning && (
                     <p className="text-xs md:text-sm text-yellow-300 mt-1">{account.closeWarning}</p>

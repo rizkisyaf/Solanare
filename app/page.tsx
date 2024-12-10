@@ -15,12 +15,13 @@ import { SecurityStatus } from "@/components/SecurityStatus"
 import Image from 'next/image'
 import { closeTokenAccount } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
-import { RENT_EXEMPTION, RENT_AFTER_FEE, MIN_VIABLE_RECLAIM } from './utils/constants'
+import { RENT_AFTER_FEE } from './utils/constants'
 import { checkTokenHolder } from './utils/token'
 import { StarField } from '@/components/StarField'
 import Link from 'next/link'
 import { AccountStats } from '@/components/AccountStats'
 import { ScanResultsPanel } from '@/components/ScanResultsPanel'
+import { Confetti } from '@/components/Confetti'
 
 
 interface BaseAccount {
@@ -56,6 +57,7 @@ export default function Component() {
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
   const [showScanResults, setShowScanResults] = useState(false);
+  const [showBigConfetti, setShowBigConfetti] = useState(false)
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { toast } = useToast()
@@ -172,10 +174,14 @@ export default function Component() {
       }
 
       await scanAccounts();
+      setShowBigConfetti(true)
+      setShowScanResults(false)
       toast({
-        title: "Accounts closed successfully",
-        description: "All selected accounts have been closed"
+        title: "Success! 🎉",
+        description: "All SOL has been sent to your wallet",
+        className: "bg-green-500/20 border-green-500/20"
       });
+      setTimeout(() => setShowBigConfetti(false), 5000)
 
       // Save to museum if eligible
       if (accounts.length > 0) {
@@ -213,6 +219,7 @@ export default function Component() {
   return (
     <div className="relative min-h-screen flex flex-col bg-black">
       <StarField />
+      {showBigConfetti && <Confetti duration={5000} />}
 
       {/* Base content */}
       <div className="relative z-10 flex flex-col min-h-screen">

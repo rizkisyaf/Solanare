@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { TokenAccountsTable } from "./TokenAccountsTable"
 import { PublicKey } from "@solana/web3.js"
+import { useState } from "react"
+import { Confetti } from "./Confetti"
 
 interface ScanResultsPanelProps {
   isOpen: boolean
@@ -32,6 +34,14 @@ export function ScanResultsPanel({
   userSolBalance,
   onCloseAll
 }: ScanResultsPanelProps) {
+  const [showSmallConfetti, setShowSmallConfetti] = useState(false);
+
+  const handleClaim = async (pubkey: PublicKey) => {
+    setShowSmallConfetti(true)
+    await onClose(pubkey)
+    setTimeout(() => setShowSmallConfetti(false), 3000)
+  }
+
   return (
     <AnimatePresence>
       <motion.div 
@@ -40,6 +50,7 @@ export function ScanResultsPanel({
         animate={{ y: isOpen ? "0%" : "calc(100% - 48px)" }}
         transition={{ type: "spring", bounce: 0.2 }}
       >
+        {showSmallConfetti && <Confetti isSmall={true} />}
         <div className="flex flex-col max-h-[90vh] md:max-h-[80vh]">
           <div className="bg-purple-950/95 p-3 md:p-4 border-b border-purple-500/20 cursor-pointer"
                onClick={onToggle}>
