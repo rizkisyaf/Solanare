@@ -13,7 +13,7 @@ import { scanAllAccounts } from './utils/scanner'
 import { checkTransactionSecurity, SecurityCheck } from './utils/security'
 import { SecurityStatus } from "@/components/SecurityStatus"
 import Image from 'next/image'
-import { closeTokenAccount } from './utils/transactions'
+import { closeTokenAccount, batchCloseTokenAccounts } from './utils/transactions'
 import { useAnalytics } from './hooks/useAnalytics'
 import { RENT_AFTER_FEE } from './utils/constants'
 import { checkTokenHolder } from './utils/token'
@@ -165,22 +165,15 @@ export default function Component() {
 
     setClosing(true);
     try {
-      const signatures = [];
-      
-      for (const account of accounts.filter(a => a.isCloseable)) {
-        const accountPubkey = account.pubkey instanceof PublicKey 
-          ? account.pubkey 
-          : new PublicKey(account.pubkey);
-        
-        const signature = await closeTokenAccount(
-          connection,
-          publicKey,
-          accountPubkey,
-          sendTransaction,
-          isTokenHolder
-        );
-        signatures.push(signature);
-      }
+      const closeableAccounts = accounts.filter(a => a.isCloseable).map(a => a.pubkey);
+      const signatures = await batchCloseTokenAccounts(
+        connection,
+        publicKey,
+        closeableAccounts,
+        sendTransaction,
+        isTokenHolder,
+        10 // batch size
+      );
 
       // Save to museum with signatures
       if (accounts.length > 0) {
@@ -197,6 +190,7 @@ export default function Component() {
           })
         });
       }
+
       await scanAccounts();
       setShowBigConfetti(true);
       setShowScanResults(false);
@@ -205,8 +199,7 @@ export default function Component() {
         description: "All SOL has been sent to your wallet",
         className: "bg-green-500/20 border-green-500/20"
       });
-      setTimeout(() => setShowBigConfetti(false), 5000)
-
+      setTimeout(() => setShowBigConfetti(false), 5000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       toast({
