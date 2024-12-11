@@ -16,66 +16,80 @@ export async function closeTokenAccount(
   const { blockhash } = await connection.getLatestBlockhash();
   
   const transaction = new Transaction();
-  
-  // Get account info and parse token balance
-  const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
-  const parsedInfo = (accountInfo.value?.data as ParsedAccountData).parsed.info;
-  const balance = parsedInfo?.tokenAmount?.uiAmount || 0;
-  const mintAddress = new PublicKey(parsedInfo.mint);
 
-  // If there's a balance, add burn instruction
-  if (balance > 0) {
-    const rawBalance = parsedInfo.tokenAmount.amount;
-    const burnInstruction = createBurnInstruction(
+  try {
+    // Get account info and safely parse data
+    const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
+    if (!accountInfo.value?.data || !('parsed' in accountInfo.value.data)) {
+      throw new Error('Invalid account data');
+    }
+
+    const parsedData = accountInfo.value.data as ParsedAccountData;
+    if (!parsedData.parsed?.info) {
+      throw new Error('Missing account info');
+    }
+
+    const info = parsedData.parsed.info;
+    const balance = info.tokenAmount?.uiAmount || 0;
+    const mintAddress = new PublicKey(info.mint);
+
+    // If there's a balance, add burn instruction
+    if (balance > 0) {
+      const rawBalance = info.tokenAmount.amount;
+      const burnInstruction = createBurnInstruction(
+        tokenAccountPubkey,
+        mintAddress,
+        wallet,
+        BigInt(rawBalance)
+      );
+      transaction.add(burnInstruction);
+    }
+
+    // Add memo instruction
+    const memoInstruction = new TransactionInstruction({
+      keys: [],
+      programId: MEMO_PROGRAM_ID,
+      data: Buffer.from(`solanare.claims:close:${isHolder ? 'holder' : 'user'}:${new Date().toISOString()}`)
+    });
+    transaction.add(memoInstruction);
+
+    // Add close instruction
+    const closeInstruction = createCloseAccountInstruction(
       tokenAccountPubkey,
-      mintAddress,
       wallet,
-      BigInt(rawBalance),
-      []
+      wallet,
+      [],
+      TOKEN_PROGRAM_ID
     );
-    transaction.add(burnInstruction);
+    transaction.add(closeInstruction);
+
+    // Add fee transfer instruction
+    const feePercentage = isHolder ? TOKEN_HOLDER_FEE_PERCENTAGE : PLATFORM_FEE_PERCENTAGE;
+    const feeAmount = Math.floor(RENT_EXEMPTION * feePercentage * 1e9);
+    
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: wallet,
+      toPubkey: TREASURY_WALLET,
+      lamports: feeAmount
+    });
+    transaction.add(transferInstruction);
+
+    transaction.feePayer = wallet;
+    transaction.recentBlockhash = blockhash;
+
+    const signature = await sendTransaction(transaction, connection);
+    await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+    });
+
+    return signature;
+  } catch (error: unknown) {
+    console.error('Error closing account:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to close account: ${errorMessage}`);
   }
-
-  // Add close instruction
-  const closeInstruction = createCloseAccountInstruction(
-    tokenAccountPubkey,
-    wallet,
-    wallet,
-    [],
-    TOKEN_PROGRAM_ID
-  );
-  
-  // Add fee transfer instruction
-  const feePercentage = isHolder ? TOKEN_HOLDER_FEE_PERCENTAGE : PLATFORM_FEE_PERCENTAGE;
-  const feeAmount = Math.floor(RENT_EXEMPTION * feePercentage * 1e9); // Convert to lamports
-  
-  const transferInstruction = SystemProgram.transfer({
-    fromPubkey: wallet,
-    toPubkey: TREASURY_WALLET,
-    lamports: feeAmount
-  });
-
-  // Add memo instruction to mark Solanare operation
-  const memoInstruction = new TransactionInstruction({
-    keys: [],
-    programId: MEMO_PROGRAM_ID,
-    data: Buffer.from(`solanare.claims:close:${isHolder ? 'holder' : 'user'}:${new Date().toISOString()}`)
-  });
-
-  transaction.add(memoInstruction);
-  transaction.add(closeInstruction);
-  transaction.add(transferInstruction);
-  transaction.feePayer = wallet;
-  transaction.recentBlockhash = blockhash;
-
-  const signature = await sendTransaction(transaction, connection);
-  await connection.confirmTransaction({
-    signature,
-    blockhash,
-    lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
-  });
-
-  return signature;
 }
 
 export async function createCloseAccountMessage(
