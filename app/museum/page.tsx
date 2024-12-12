@@ -44,7 +44,7 @@ export default function MuseumPage() {
   const [_loading, setLoading] = useState(true)
   const { toast } = useToast()
   const { publicKey } = useWallet()
-  const { trackEvent } = useAnalytics()
+  const { track } = useAnalytics()
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function MuseumPage() {
   }
 
   const handleShare = async (reclaimId: string, isTokenHolder: boolean) => {
-    trackEvent('reclaim_share_initiated', {
+    track('reclaim_share_initiated', {
       id: reclaimId,
       is_token_holder: isTokenHolder,
       share_type: isTokenHolder ? 'download' : 'share'
@@ -99,7 +99,7 @@ export default function MuseumPage() {
           title: 'My Solana Reclaim',
           text: 'Check out my Solana token account reclaim on Solanare!'
         })
-        trackEvent('reclaim_share_success', {
+        track('reclaim_share_success', {
           id: reclaimId,
           is_token_holder: isTokenHolder,
           share_method: 'native'
@@ -109,7 +109,7 @@ export default function MuseumPage() {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ])
-        trackEvent('reclaim_share_success', {
+        track('reclaim_share_success', {
           id: reclaimId,
           is_token_holder: isTokenHolder,
           share_method: 'clipboard'
@@ -120,7 +120,7 @@ export default function MuseumPage() {
         })
       }
     } catch (error) {
-      trackEvent('reclaim_share_error', {
+      track('reclaim_share_error', {
         id: reclaimId,
         is_token_holder: isTokenHolder,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -151,7 +151,7 @@ export default function MuseumPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/"
-                    onClick={() => trackEvent('navigation_clicked', { page: 'home' })}
+                    onClick={() => track('navigation_clicked', { page: 'home' })}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                   >
                     <Image
@@ -167,7 +167,7 @@ export default function MuseumPage() {
               </div>
               <WalletMultiButton 
                 onClick={() => {
-                  trackEvent('wallet_button_clicked', {
+                  track('wallet_button_clicked', {
                     page: window.location.pathname,
                     walletConnected: !!publicKey
                   });

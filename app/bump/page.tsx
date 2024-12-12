@@ -28,7 +28,7 @@ export default function BumpPage() {
     const { publicKey, sendTransaction } = useWallet()
     const { connection } = useConnection()
     const { toast } = useToast()
-    const { trackEvent } = useAnalytics()
+    const { track } = useAnalytics()
     const [bumpHistory, setBumpHistory] = useState<BumpRecord[]>([])
     const [loadingHistory, setLoadingHistory] = useState(true)
     const [bumpAmount, setBumpAmount] = useState<number>(0.01)
@@ -98,7 +98,7 @@ export default function BumpPage() {
             localStorage.setItem(`lastBump_${publicKey.toString()}`, now.toString());
             setLastBump(now);
 
-            trackEvent('bump_success', {
+            track('bump_success', {
                 wallet: publicKey.toString(),
                 signature,
                 isHolder
@@ -203,7 +203,7 @@ export default function BumpPage() {
                                                 onChange={(e) => {
                                                     const newAmount = Math.max(0.01, Number(e.target.value));
                                                     setBumpAmount(newAmount);
-                                                    trackEvent('bump_amount_changed', {
+                                                    track('bump_amount_changed', {
                                                         amount: newAmount,
                                                         isHolder
                                                     });
@@ -270,7 +270,7 @@ export default function BumpPage() {
                                                 href={`https://solscan.io/tx/${bump.signature}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                onClick={() => trackEvent('view_transaction_clicked', {
+                                                onClick={() => track('view_transaction_clicked', {
                                                     signature: bump.signature,
                                                     isHolder: bump.isHolder
                                                 })}

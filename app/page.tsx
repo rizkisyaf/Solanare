@@ -60,7 +60,7 @@ export default function Component() {
   const { publicKey, sendTransaction } = useWallet()
   const { connection } = useConnection()
   const { toast } = useToast()
-  const { trackEvent } = useAnalytics()
+  const { track } = useAnalytics()
   const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const message = e.target.value
     if (message.length > 100) {
@@ -313,7 +313,7 @@ export default function Component() {
                     <div className="w-full sm:w-auto group relative cursor-pointer"
                       onClick={() => {
                         navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
-                        trackEvent('token_address_clicked', {
+                        track('token_address_clicked', {
                           source: 'address_display'
                         });
                         toast({
@@ -335,7 +335,7 @@ export default function Component() {
                       className="hidden md:flex h-8 w-8 text-purple-400 hover:text-purple-300 shrink-0"
                       onClick={() => {
                         navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
-                        trackEvent('token_address_copied', {
+                        track('token_address_copied', {
                           source: 'desktop_button'
                         });
                         toast({
@@ -367,7 +367,7 @@ export default function Component() {
                         className="md:hidden text-sm text-purple-400 hover:text-purple-300"
                         onClick={() => {
                           navigator.clipboard.writeText("14ornfnSSU2Gr23hhru7mAUpUM68H4rx13B2YMWb6ume");
-                          trackEvent('token_address_copied', {
+                          track('token_address_copied', {
                             source: 'mobile_button'
                           });
                           toast({
@@ -416,7 +416,7 @@ export default function Component() {
                     value={personalMessage}
                     onChange={(e) => {
                       handleMessageChange(e);
-                      trackEvent('personal_message_input', {
+                      track('personal_message_input', {
                         messageLength: e.target.value.length,
                         isTokenHolder
                       });
@@ -436,7 +436,7 @@ export default function Component() {
                   <div className="flex justify-center gap-4">
                     <Button
                       onClick={() => {
-                        trackEvent('scan_accounts_clicked', {
+                        track('scan_accounts_clicked', {
                           walletConnected: !!publicKey,
                           previousScanResults: accounts.length
                         });
@@ -477,7 +477,7 @@ export default function Component() {
             <div className="flex items-center justify-around h-16">
               <Link
                 href="/"
-                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'home' })}
+                onClick={() => track('mobile_nav_clicked', { destination: 'home' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🏠</span>
@@ -485,7 +485,7 @@ export default function Component() {
               </Link>
               <Link
                 href="/museum"
-                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'museum' })}
+                onClick={() => track('mobile_nav_clicked', { destination: 'museum' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🏛️</span>
@@ -493,7 +493,7 @@ export default function Component() {
               </Link>
               <Link
                 href="/bump"
-                onClick={() => trackEvent('mobile_nav_clicked', { destination: 'bump' })}
+                onClick={() => track('mobile_nav_clicked', { destination: 'bump' })}
                 className="flex flex-col items-center gap-1 text-purple-300/70 hover:text-purple-300"
               >
                 <span className="text-lg">🚀</span>
@@ -515,14 +515,14 @@ export default function Component() {
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:text-purple-300 transition-colors"
-                onClick={() => trackEvent('ninuang_link_clicked')}
+                onClick={() => track('ninuang_link_clicked')}
               >Ninuang</a></p>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6">
               <a
                 href="mailto:support@solana.reclaims"
-                onClick={() => trackEvent('support_email_clicked')}
+                onClick={() => track('support_email_clicked')}
                 className="text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
                 support@solana.reclaims
@@ -532,7 +532,7 @@ export default function Component() {
                 href="https://twitter.com/kisra_fistya"
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent('twitter_link_clicked')}
+                onClick={() => track('twitter_link_clicked')}
                 className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-purple-300/50 hover:text-purple-300 transition-colors"
               >
                 <svg viewBox="0 0 24 24" className="h-3 w-3 sm:h-4 sm:w-4 fill-current">
@@ -561,7 +561,7 @@ export default function Component() {
             isOpen={showScanResults}
             onToggle={() => {
               setShowScanResults(!showScanResults);
-              trackEvent('scan_results_panel_toggle', {
+              track('scan_results_panel_toggle', {
                 action: !showScanResults ? 'expand' : 'collapse',
                 accountsCount: accounts.length
               });
@@ -577,7 +577,7 @@ export default function Component() {
                   sendTransaction
                 );
                 await scanAccounts();
-                trackEvent('close_single_account', {
+                track('close_single_account', {
                   success: true,
                   accountAddress: pubkey.toString()
                 });
@@ -587,7 +587,7 @@ export default function Component() {
                 });
               } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-                trackEvent('close_single_account', {
+                track('close_single_account', {
                   success: false,
                   error: errorMessage
                 });
@@ -603,7 +603,7 @@ export default function Component() {
             isClosing={closing}
             userSolBalance={userSolBalance}
             onCloseAll={() => {
-              trackEvent('close_all_accounts_initiated', {
+              track('close_all_accounts_initiated', {
                 accountsCount: accounts.length
               });
               closeAccounts();
@@ -629,7 +629,7 @@ export default function Component() {
               value={personalMessage}
               onChange={(e) => {
                 handleMessageChange(e);
-                trackEvent('personal_message_input', {
+                track('personal_message_input', {
                   messageLength: e.target.value.length,
                   isTokenHolder
                 });
@@ -643,7 +643,7 @@ export default function Component() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  trackEvent('message_input_cancelled');
+                  track('message_input_cancelled');
                   setShowMessageInput(false);
                   setPersonalMessage('');
                 }}
@@ -652,7 +652,7 @@ export default function Component() {
               </Button>
               <Button
                 onClick={() => {
-                  trackEvent('message_input_submitted', {
+                  track('message_input_submitted', {
                     messageLength: personalMessage.length,
                     isTokenHolder
                   });
