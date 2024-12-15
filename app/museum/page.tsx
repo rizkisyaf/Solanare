@@ -49,6 +49,18 @@ export default function MuseumPage() {
 
   useEffect(() => {
     fetchReclaims()
+
+    // Add focus event listener
+    const handleFocus = () => {
+      fetchReclaims()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   const fetchReclaims = async () => {
