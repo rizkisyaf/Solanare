@@ -112,92 +112,116 @@ export async function batchCloseTokenAccounts(
   tokenAccounts: (PublicKey | string)[],
   sendTransaction: (transaction: Transaction, connection: Connection) => Promise<string>,
   isHolder: boolean = false,
-  batchSize: number = 10
+  initialBatchSize: number = 5
 ) {
   const signatures: string[] = [];
-  const batches = [];
+  let currentBatchSize = initialBatchSize;
+  let remainingAccounts = [...tokenAccounts];
 
-  // Split accounts into batches of batchSize
-  for (let i = 0; i < tokenAccounts.length; i += batchSize) {
-    batches.push(tokenAccounts.slice(i, i + batchSize));
-  }
+  while (remainingAccounts.length > 0) {
+    try {
+      // Take the next batch
+      const currentBatch = remainingAccounts.slice(0, currentBatchSize);
+      const { blockhash } = await connection.getLatestBlockhash();
+      const transaction = new Transaction();
 
-  for (const batch of batches) {
-    const { blockhash } = await connection.getLatestBlockhash();
-    const transaction = new Transaction();
+      // Add instructions for each account in the current batch
+      for (const account of currentBatch) {
+        const tokenAccountPubkey = typeof account === 'string' ? new PublicKey(account) : account;
+        
+        // Get account info and add instructions for each account
+        const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
+        if (!accountInfo.value?.data || !('parsed' in accountInfo.value.data)) {
+          continue;
+        }
 
-    for (const account of batch) {
-      const tokenAccountPubkey = typeof account === 'string' ? new PublicKey(account) : account;
-      
-      // Get account info and add instructions for each account
-      const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
-      if (!accountInfo.value?.data || !('parsed' in accountInfo.value.data)) {
-        continue;
-      }
+        const parsedData = accountInfo.value.data as ParsedAccountData;
+        if (!parsedData.parsed?.info) {
+          continue;
+        }
 
-      const parsedData = accountInfo.value.data as ParsedAccountData;
-      if (!parsedData.parsed?.info) {
-        continue;
-      }
+        const info = parsedData.parsed.info;
+        const balance = info.tokenAmount?.uiAmount || 0;
+        const mintAddress = new PublicKey(info.mint);
 
-      const info = parsedData.parsed.info;
-      const balance = info.tokenAmount?.uiAmount || 0;
-      const mintAddress = new PublicKey(info.mint);
+        if (balance > 0) {
+          transaction.add(
+            createBurnInstruction(
+              tokenAccountPubkey,
+              mintAddress,
+              wallet,
+              BigInt(info.tokenAmount.amount)
+            )
+          );
+        }
 
-      if (balance > 0) {
+        // Add close instruction
         transaction.add(
-          createBurnInstruction(
+          createCloseAccountInstruction(
             tokenAccountPubkey,
-            mintAddress,
             wallet,
-            BigInt(info.tokenAmount.amount)
+            wallet,
+            [],
+            TOKEN_PROGRAM_ID
           )
+        );
+
+        // Add fee transfer
+        const feePercentage = isHolder ? TOKEN_HOLDER_FEE_PERCENTAGE : PLATFORM_FEE_PERCENTAGE;
+        const feeAmount = Math.floor(RENT_EXEMPTION * feePercentage * 1e9);
+        transaction.add(
+          SystemProgram.transfer({
+            fromPubkey: wallet,
+            toPubkey: TREASURY_WALLET,
+            lamports: feeAmount
+          })
         );
       }
 
-      // Add close instruction
+      // Add memo for the batch
       transaction.add(
-        createCloseAccountInstruction(
-          tokenAccountPubkey,
-          wallet,
-          wallet,
-          [],
-          TOKEN_PROGRAM_ID
-        )
-      );
-
-      // Add fee transfer
-      const feePercentage = isHolder ? TOKEN_HOLDER_FEE_PERCENTAGE : PLATFORM_FEE_PERCENTAGE;
-      const feeAmount = Math.floor(RENT_EXEMPTION * feePercentage * 1e9);
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: wallet,
-          toPubkey: TREASURY_WALLET,
-          lamports: feeAmount
+        new TransactionInstruction({
+          keys: [],
+          programId: MEMO_PROGRAM_ID,
+          data: Buffer.from(`solanare.claims:batch:${isHolder ? 'holder' : 'user'}:${new Date().toISOString()}`)
         })
       );
+
+      transaction.feePayer = wallet;
+      transaction.recentBlockhash = blockhash;
+
+      try {
+        const signature = await sendTransaction(transaction, connection);
+        await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+        });
+
+        signatures.push(signature);
+        
+        // Successfully processed this batch, remove these accounts from remaining
+        remainingAccounts = remainingAccounts.slice(currentBatchSize);
+        
+        // If successful with current batch size, try to increase it slightly for efficiency
+        if (currentBatchSize < 10) {
+          currentBatchSize = Math.min(currentBatchSize + 1, 10);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('too large')) {
+          // If transaction is too large, reduce batch size and retry
+          currentBatchSize = Math.max(Math.floor(currentBatchSize / 2), 1);
+          console.log(`Reducing batch size to ${currentBatchSize} and retrying...`);
+          // Don't remove accounts from remainingAccounts, they'll be retried
+          continue;
+        }
+        throw error; // Re-throw other errors
+      }
+
+    } catch (error) {
+      console.error('Error in batch processing:', error);
+      throw error;
     }
-
-    // Add memo for the batch
-    transaction.add(
-      new TransactionInstruction({
-        keys: [],
-        programId: MEMO_PROGRAM_ID,
-        data: Buffer.from(`solanare.claims:batch:${isHolder ? 'holder' : 'user'}:${new Date().toISOString()}`)
-      })
-    );
-
-    transaction.feePayer = wallet;
-    transaction.recentBlockhash = blockhash;
-
-    const signature = await sendTransaction(transaction, connection);
-    await connection.confirmTransaction({
-      signature,
-      blockhash,
-      lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
-    });
-
-    signatures.push(signature);
   }
 
   return signatures;
